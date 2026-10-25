@@ -9,7 +9,7 @@ This is a planned control baseline. A control is not considered implemented unti
 ## Assets
 
 - Verified identities, membership status, organization roles, and temporal project assignments.
-- Drafts, immutable caption versions, comments, suggestions, deliverables, attachments, and search indexes.
+- Drafts, immutable caption versions, comments, suggestions, deliverable links, and search indexes.
 - Workflow templates/instances, formal decisions, overrides, final approved versions, and audit history.
 - Collaboration documents, room membership, cursor/presence identity, and anchored threads.
 - AI prompts, retrieved examples, style profiles, outputs, provenance, feedback, and quota records.
@@ -32,6 +32,34 @@ This is a planned control baseline. A control is not considered implemented unti
 
 Browser input, URLs, client state, provider room names, webhook bodies, Notion fields, AI output, and uploaded files are untrusted. Trusted decisions occur only in reviewed server modules, database constraints/functions, and RLS policies. Supabase service-role access bypasses RLS and must be narrowly isolated, never treated as a general application client.
 
+## Phase 01 foundation controls
+
+Phase 01 establishes security-enabling boundaries; it does not claim that later authentication, authorization, or data controls are implemented.
+
+### Environment configuration
+
+- Parse environment input through separate typed public and server schemas.
+- Permit client exposure only for explicitly documented `NEXT_PUBLIC_*` keys. A shared client import must never contain or re-export server configuration.
+- Mark future integration variables optional until their owning feature is enabled or adapter is instantiated. Once supplied, every value must pass its schema; an empty or malformed value is not silently accepted as a credential.
+- Errors may name a missing or invalid key but must not include its value. Tests use synthetic values and must not snapshot secrets.
+- `.env.example` contains the full documented key names with empty values only. `.env`, `.env.local`, environment-specific local files, and generated provider state remain ignored.
+- A foundation build must succeed without real credentials. Supplying placeholder values must not cause network calls or imply that a service is configured.
+
+### Local Supabase boundary
+
+- Phase 01 uses the project-local CLI and disposable local containers only.
+- Do not run `supabase link`, remote database pushes, hosted migration commands, or commands requiring a project reference or access token.
+- Generated local API keys and database credentials may exist in process output or ignored local state; they must not be copied into tracked files, build logs, screenshots, or prompts.
+- No business tables, real identities, Auth hooks, RLS business policies, Storage buckets, or production-like personal data belong in this phase.
+- Verification must confirm that `supabase/.temp/project-ref` is absent. Lack of a local container runtime is a recorded blocker, not permission to substitute a hosted service.
+
+### Tooling and shell controls
+
+- Dependency changes must preserve `package-lock.json`, be limited to foundation needs, and report unresolved audit findings without applying an unreviewed breaking forced fix.
+- Build, coverage, Playwright, environment, Supabase temporary, and local database artifacts remain ignored.
+- The basic shell is unauthenticated demonstration structure only. It must not display private fixtures, claim authorization, or encode role checks that could be mistaken for enforcement.
+- Verification includes environment-schema negative tests, a tracked-file secret scan, and inspection of built client output for server-only key names.
+
 ## Authentication and membership
 
 - Use Supabase Auth with the identity-provider order specified by the product spec; the actual provider remains open.
@@ -45,6 +73,38 @@ Browser input, URLs, client state, provider room names, webhook bodies, Notion f
 
 Identity provider, exact domain, CAPTCHA provider, account-cooldown thresholds, and session-lifetime details are unresolved decisions.
 
+### Phase 03 offline project/content controls
+
+Phase 03 extends the offline authorization design without claiming hosted database verification.
+
+- All twelve new API-facing tables declare RLS. Authenticated browser roles receive explicit `SELECT` grants only; no direct table insert, update, or delete grant exists. The Phase 03 audit table has no browser read grant.
+- Trusted functions derive the actor from `auth.uid()`, use a fixed empty `search_path`, validate same-organization/project foreign keys, and write allowlisted audit metadata. Server Actions reauthenticate through the server-only data layer because page visibility is not authorization.
+- Project access requires active organization membership plus a current project assignment, except for same-organization publicity directors and organization administrators performing the narrow administration visibility defined by the plan.
+- Project assignment values are a separate enum from organization roles. Assignment and responsibility functions accept only constrained enum values and validate the target membership/project relation.
+- Viewers remain read-only. Organization administrators may administer access but receive no editorial capability from that role. Executives require a current head assignment to become actionable and still require explicit writer responsibility to edit an existing content record.
+- Content records accept only the seeded content kinds and controlled tag slugs. Composite foreign keys reject invalid kind/tag combinations, while trusted functions reject arbitrary, duplicate, inactive, or empty tag selections atomically.
+- Generic content metadata mutation cannot select workflow-owned statuses. Phase 03 creates drafts and exposes no approval or collaboration transition.
+- Deliverable input is bounded to HTTP(S), rejects embedded URL credentials, and is rendered as an escaped external link. A-020 excludes attachments, Storage, and uploads.
+- The special-case indicator requires a bounded reason, creates audit evidence when changed, and has no authority to suppress a length rule or create an exception.
+- No application code consumes a service-role key. Public Supabase configuration remains the only browser/server client configuration.
+
+Offline unit/static tests cover cross-organization denial, viewers, organization/project-role separation, executive read-only behavior, controlled taxonomy, invalid tag combinations, unsafe links, direct-write grants, and server-only imports. `supabase/tests/projects_content_rls.test.sql` contains 18 synthetic runtime assertions, but those assertions remain pending until an isolated hosted development database is explicitly authorized.
+
+### Phase 02 offline implementation state
+
+The repository now contains the credential-free portion of this boundary. Nothing in this state proves that a hosted Supabase project is configured or that the migration executes against the provider's current schema.
+
+- Every Phase 02 API table has RLS enabled. Browser roles receive only explicit organization-scoped or self-scoped `SELECT` policies; table `INSERT`, `UPDATE`, and `DELETE` remain denied.
+- Allowlist claims and organization administration use narrow `security definer` functions with an empty fixed `search_path`, fully qualified objects, database-time validity checks, and explicit execute grants.
+- Membership claims compare the verified session's normalized full email and bind the result to `auth.uid()`. Usernames, local parts, profile fields, and user-editable metadata do not grant access.
+- Suspended and expired memberships fail both server policy classification and database active-membership predicates. A stale authenticated session is not sufficient for application access.
+- Authentication audit rows are append-only from trusted functions and are not readable or writable by browser roles.
+- Browser and server clients use only the Supabase URL plus publishable/anonymous key. `SUPABASE_SERVICE_ROLE_KEY` remains an optional server-only placeholder and no Phase 02 application module consumes it.
+- The callback accepts only relative internal return paths. Login, callback, and access-denied responses avoid exposing whether an account, domain, invitation, or membership exists.
+- Static boundary tests cover client/service-role separation and RLS presence. Migration/RLS behavior tests are version controlled with synthetic identities, but remain pending until an explicitly authorized isolated hosted development database is available.
+
+Before hosted verification, an operator must review and apply the migration, enable the Before User Created hook, select the institutional identity provider and approved domain rules, configure exact redirect origins, configure provider rate limits/CAPTCHA, bootstrap the first organization administrator through a reviewed one-time procedure, and then run the database policy tests. None of these steps is authorized by the offline pass.
+
 ## Authorization model
 
 Authorization combines three separate dimensions:
@@ -53,7 +113,7 @@ Authorization combines three separate dimensions:
 2. One or more ongoing organization roles: `junior_officer`, `publicity_director`, `pro`, `executive`, `org_admin`.
 3. A current project assignment: `publicity_head`, `co_project_head`, `project_head`, `writer`, or `viewer`, including its validity and revocation timestamps.
 
-Workflow authority is derived from the frozen instance's current step, not merely a global title. `org_admin` does not automatically gain editorial approval. Executives remain read-only unless a current project assignment grants a specific action. UI capability checks improve usability but never replace RLS or server enforcement.
+Workflow authority is derived from the frozen instance's current step, not merely a global title. `org_admin` does not automatically gain editorial approval. Executives remain read-only unless a current project assignment grants a specific action, except for the narrow length-policy activation/rejection decision explicitly accepted in A-017. That exception grants no draft-policy editing, general settings mutation, or caption-editing capability. UI capability checks improve usability but never replace RLS or server enforcement.
 
 ## Database and RLS controls
 
@@ -63,6 +123,9 @@ Workflow authority is derived from the frozen instance's current step, not merel
 - Cover `SELECT`, `INSERT`, `UPDATE`, and `DELETE` independently; do not assume read policy implies safe writes.
 - Add constraints for controlled format/tag relationships, exact workflow/version references, reaction uniqueness, and immutable versions.
 - Restrict mutation of audit records, decisions, membership, role assignments, workflow instances, and integration records to trusted functions or narrowly authorized actors.
+- Restrict length-policy draft creation/editing to `publicity_director` and `pro`. Use a separate audited activation/rejection operation for `publicity_director`, `pro`, and `executive`; never expose unrestricted policy-table mutation to browser roles.
+- Make activated length-policy versions immutable and retain superseded rows. Submitted caption versions store the resolved policy identifiers and evaluated values so a later policy cannot reinterpret historical content.
+- Keep destination-policy templates in the private schema. Organization-scoped destination policies expose read-only active-member catalog access; initialization and later version changes must be actor-derived trusted operations with same-organization checks, RLS, and audit evidence.
 - Test allowed, denied, suspended/expired, stale-assignment, and cross-organization cases using distinct sessions.
 - Review Storage bucket policies and Realtime channel authorization alongside table RLS.
 
@@ -120,10 +183,9 @@ Workflow authority is derived from the frozen instance's current step, not merel
 ## Content and browser security
 
 - Sanitize rich text and generated HTML on trusted boundaries; prefer structured editor JSON and safe rendering.
-- Validate URLs and protocols for deliverables, attachments, and external links.
+- Validate URLs and protocols for deliverables and external links.
 - Protect state-changing browser requests against CSRF according to the chosen session mechanism.
 - Set security headers, frame restrictions, MIME protections, referrer policy, and permissions policy appropriate to used browser APIs.
-- Validate uploads by type, size, ownership, and storage path; malware-scanning requirements remain an open operational choice if attachments enter the MVP.
 - Ensure decorative Unicode does not replace canonical plain text and does not transform links, emails, mentions, or hashtags by default.
 
 ## Audit, monitoring, and privacy
@@ -142,7 +204,7 @@ Retention periods, audit access, export format, deletion/anonymization obligatio
 
 ## Required security verification
 
-- Unit tests for permission evaluation, workflow transitions, invalidation, input validation, grapheme counting, Unicode mapping, signature helpers, and field mapping.
+- Unit tests for permission evaluation, workflow transitions, invalidation, input validation, versioned word counting, platform-specific grapheme counting, Unicode mapping, signature helpers, and field mapping.
 - RLS integration tests with allowed, denied, cross-organization, suspended, expired, revoked, and stale-assignment personas.
 - Direct-request tests proving hidden UI is not the enforcement boundary.
 - Storage and Realtime policy tests.

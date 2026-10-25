@@ -21,8 +21,11 @@
 # Local environment and secrets
 .env*
 !.env.example
+.secrets*
+*.secret
+*.secrets
 *.pem
-.env.example
+*.key
 
 # Supabase local state
 /supabase/.branches/

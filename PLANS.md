@@ -6,6 +6,20 @@ This roadmap turns `docs/PRODUCT_SPEC.md` into bounded, reviewable implementatio
 
 This document is planning material only. It does not authorize dependency installation, credentials, external-service changes, deployment, commits, or pushes.
 
+## Current verified status
+
+As of 2026-10-25, Phases 0 and 1 and Gate A are complete for the fixture-only foundation. The repository has one npm lockfile, strict TypeScript and quality scripts, an accessible responsive CapItUp shell, static route-level fixture views, and no live integration.
+
+Local Supabase container startup remains intentionally unavailable because Docker and Podman are not installed and the user does not want either runtime. This is not evidence of a hosted Supabase connection. A Phase 02 migration and pending hosted database tests now exist in version control, but no migration, Auth hook, or RLS policy has run against a database; no hosted project link, Vercel project, or deployment exists.
+
+The offline portion of Phase 02 is implemented under A-015. It adds a version-controlled authentication/membership migration, Supabase SSR clients, protected routes, server-side membership checks, generic access handling, logout, migration-derived TypeScript types, synthetic unit/browser tests, and pending hosted RLS tests. O-001, O-002, O-006, O-023, and O-025 remain unresolved where they require product or operational choices.
+
+Phase 02 remains **offline-implemented but not hosted-verified**. The user subsequently and explicitly selected `harness/build/phase-03-projects-content.md` as the active narrow implementation plan despite unresolved roadmap numbering under O-028.
+
+That Phase 03 slice is now **offline-implemented but not database-verified**. It adds the additive project/content migration, controlled taxonomy, temporal assignments, server-only authorization/data access, project/content metadata UI, offline tests, and pending hosted pgTAP/RLS tests. No migration has been applied to a database, and no hosted project was contacted. Caption bodies, immutable caption versions, approval workflows, the collaborative editor, realtime, AI, Notion, attachments, and deployment have not begun.
+
+The exact next permitted task is review or explicitly authorized isolated hosted-development migration/RLS verification for Phases 02 and 03. It is not permission to begin the historical caption-drafting/version plan or Phase 04.
+
 ## Product guardrails
 
 - Build a private, organization-only caption workspace named **CapItUp**.
@@ -24,7 +38,7 @@ This document is planning material only. It does not authorize dependency instal
 |---|---|---|---|
 | 0 | `harness/build/phase-00-repository-foundation.md` | Reproducible local foundation and verified project conventions | Planning artifacts approved |
 | 1 | `harness/build/phase-01-ui-foundation.md` | Accessible responsive application shell using local fixtures | Phase 0 complete |
-| 2 | `harness/build/phase-02-auth-membership-rls.md` | Invitation-only identity, membership, assignments, RLS, and security events | Identity choices resolved; Phases 0–1 complete |
+| 2 | `harness/build/phase-02-auth-membership.md` | Invitation-only authentication, organization membership, roles, protected routes, RLS, and authentication security events | Offline implementation complete; hosted identity choices and database verification pending |
 | 3 | `harness/build/phase-03-caption-drafting-versions.md` | Caption records, drafting, immutable versions, limits, Unicode tools, reactions, and search | Phase 2 authorization foundation complete |
 | 4 | `harness/build/phase-04-approval-workflow.md` | Version-bound configurable approvals, overrides, and workflow notifications | Phase 3 immutable versions complete |
 | 5 | `harness/build/phase-05-realtime-collaboration.md` | Authorized collaborative editing, anchors, suggestions, presence, and snapshot handoff | Collaboration approach resolved; Phases 2–4 complete |

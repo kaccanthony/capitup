@@ -221,6 +221,8 @@ Each record contains:
 
 Model deliverables as child records rather than one text field so a post may later have a publication material, video, registration form, article draft, or other committee output. A deliverable record should contain `label`, `url`, `source_committee`, `deliverable_type`, and optional `status`.
 
+CapItUp uses deliverable links only. A creative image, video, article, Canva file, Drive file, registration material, or other media reference is stored as a separate deliverable-link record rather than embedded in the caption body. Do not create file-upload UI, a Storage bucket, attachment rows, malware scanning, public asset URLs, or upload/download behavior. The link exists to help the publicity team find the media supplied by the Creative or Media Committee while preparing a manual post.
+
 Model destinations through an organization-managed `publication_channels` table and a many-to-many relation. Examples may include Facebook, Instagram, LinkedIn, website, and other approved channels. Do not hard-code one destination into the caption record.
 
 ### 6.3 Approved content tags
@@ -323,9 +325,17 @@ Requirements:
 
 Keep the Unicode mapping tables in a tested code utility because the mapping is application behavior. Keep the list of styles enabled for the organization in database settings if administrators should be able to disable specific styles.
 
-### 6.7 Character limits and special cases
+### 6.7 Length recommendations, platform limits, and special cases
 
-Store character-limit policies in the database, not as frontend constants. The organization expects these recommendations to change by term, format, tag, or destination, so hard-coding would require a redeploy and leave old records ambiguous.
+Store length policies in the database, not as frontend constants. Organization recommendations are measured in words; verified destination-platform hard limits retain the unit and counting algorithm defined by that platform. The organization expects recommendations to change by term, format, tag, or destination, so hard-coding would require a redeploy and leave old records ambiguous.
+
+Initial organization recommendations for caption copy are:
+
+- `post`: 120 words.
+- `video`: 100 words.
+- `article`: 200 words.
+
+These values are the initial policies the organization intends to enter through application settings, not compiled constants, migration seeds, permanent defaults, or limits on an article's full body. Until an authorized user activates the applicable policy, show that no organization recommendation is configured rather than silently applying a code fallback. Verified platform hard limits still apply independently.
 
 Use a versioned `caption_limit_policies` table with:
 
@@ -333,28 +343,66 @@ Use a versioned `caption_limit_policies` table with:
 - Optional content format
 - Optional content tag
 - Optional publication channel
-- Recommended maximum visible characters
-- Optional platform hard maximum
-- Effective start and end dates or academic term
-- Active flag
-- Creator and change reason
+- Measurement unit and counting-algorithm version
+- Recommended maximum words
+- Configurable approaching-warning threshold
+- Optional platform hard maximum, unit, counting algorithm, source, and verification date
+- Effective timestamp stored as an absolute instant and presented for policy administration in `Asia/Manila` (Philippine Standard Time, UTC+08:00)
+- Optional effective end or academic term
+- Version, lifecycle status, creator, activation decision maker, and change reason
 
-Resolve the most specific active policy. If several selected tags or destinations produce different recommendations, show the strictest applicable recommendation and explain which rule produced it.
+Allow authorized users to configure content-kind defaults and optional controlled-tag or destination overrides in application settings. Do not encode those overrides in components. Resolve the most specific active policy. If several selected tags or destinations produce different recommendations, show the strictest applicable recommendation and explain which rule produced it.
 
-The recommended maximum produces a warning, not a submission block. A true external platform maximum may block export or publication, but must be labeled separately.
+`publicity_director` and `pro` may author or edit a draft policy version. A `publicity_director`, `pro`, or `executive` may decide whether that version becomes active. This policy-activation decision is a narrow exception to the default executive read-only rule; it does not grant an executive permission to edit captions or other organization settings. Every create, edit, activation, rejection, retirement, and supersession action must be authorized server-side and audited.
 
-Special-case fields:
+Policy versions are append-only after activation. Editing an active policy creates a new version with its own effective timestamp rather than modifying the old row. Every submitted caption version records the exact policy-version identifiers and evaluated values used at submission. Historical views must show both that Caption A was evaluated under Policy v1 and the complete Policy v1 values even after Policy v2 becomes active. Retiring or superseding a policy must not remove it from historical evaluations.
 
-- `is_special_case`
-- `special_case_reason`
-- `exception_requested_by`
-- `exception_approved_by`
-- `exception_approved_at`
-- Optional `exception_max_visible_characters`
+The recommended maximum produces a warning, not a submission block. Display `Within recommendation`, `Approaching recommendation`, `Over recommendation`, and, when applicable, `Special-case exemption`. The approaching threshold is policy data and must not be hard-coded. A verified external platform maximum uses a separate `Over platform maximum` state and may block export or publication, but must be labeled separately.
+
+Special-case exception data must retain:
+
+- The `is_special_case` indicator and request justification.
+- Requester and request timestamp.
+- The selected approval template and a frozen snapshot of its rules for the relevant caption version.
+- Each version-bound approval or rejection decision rather than one mutable `exception_approved_by` field.
+- Grant, rejection, and revocation timestamps and actors when applicable.
+- Optional `exception_max_visible_characters`.
 
 When an approved special case applies, continue displaying the counter but replace the normal length warning with a neutral **Special-case exemption** indicator. Platform hard limits still apply.
 
-Count **visible user-perceived characters**, technically extended grapheme clusters. This makes `👍🏽`, `🇵🇭`, and `👨‍👩‍👧‍👦` count as one each even though JavaScript string length reports multiple UTF-16 code units.
+Special-case exception requests are version-bound. A `junior_officer`, `publicity_director`, or `pro` may request an exception, and the request must include a trimmed justification of at least 50 characters. A requester may approve their own request only when acting as a `publicity_director` or `pro`; a `junior_officer` may not self-approve.
+
+Each task selects an exception-approval template or preset. The template selects one or more of these independent approver categories:
+
+- The `publicity_director` organization role.
+- The project's `publicity_head` assignment.
+- The `pro` organization role.
+- The `executive` organization role when the person also holds an active `co_project_head` or `project_head` assignment for that project.
+
+The template defines whether one selected category is sufficient (`any_of`) or every selected category is required (`all_of`). It must also explicitly define how rejection completes the request; rejection behavior must not be inferred from UI order or hard-coded role precedence. Freeze the selected template and its rules when the caption version is submitted so later template edits cannot change an in-progress or historical decision.
+
+A decision reason or remark is optional for approval or rejection. Revocation requires a reason and may be performed by an eligible `executive` or `pro`. Organization roles and project assignments remain separate authorization inputs; a person may hold more than one without one enum inheriting from another.
+
+Creating or submitting a changed caption version invalidates the prior version's approval or exception outcome and requires approval for the new immutable version. Exception decisions and revocations must never be retargeted to a mutable working document.
+
+Append-only audit records must retain the content item ID, immutable version ID, action (`submitted`, `approved`, `rejected`, `exception_granted`, or `exception_revoked`), actor ID, the actor's applicable organization role and project assignment at the time, timestamp, reason or remarks when applicable, previous status, and new status. Audit history remains immutable when content is edited or superseded.
+
+Notify the content owner or submitter when content is approved or rejected, an exception is granted or revoked, or a new version causes a previously approved item to require re-approval. Notify eligible approvers when a new or modified version is submitted and requires their decision.
+
+Count organization recommendations in words using one shared, versioned client/server algorithm. Do not substitute a naive whitespace split. The current algorithm is:
+
+- An apostrophe inside a non-hyphenated term does not split it: `Let's` is one word.
+- A hyphen separates nonempty components: `FEU-Tech's` is two words, and an apostrophe within a component does not split it further.
+- Numbers and alphanumeric terms are one word: `10th` is one word.
+- Each standalone emoji grapheme is one word because it is meaningful graphical content.
+- An HTTP(S) or `www.` URL is one word regardless of its length.
+- A hashtag is zero words: `#FITGames2026` contributes no word.
+- A mention is one word: `@everyone` is one word.
+- Do not attempt language-specific segmentation. A word-like continuous non-whitespace sequence in a language or writing system without whitespace separation is one word.
+
+The resolved policy for the content's specific controlled tag supplies the recommendation. The policy configuration also supplies a 40-word approaching offset and a global hard maximum of 400 words; these values are versioned policy/configuration data rather than implementation constants. With a 200-word tag recommendation, Normal is 0–159 words, Approaching recommendation is 160–200, Exceeds recommendation is 201–400, and Exceeds hard maximum is 401 or more.
+
+When a destination's verified hard limit is character-based, count **visible user-perceived characters**, technically extended grapheme clusters, unless the provider documents a different algorithm. This makes `👍🏽`, `🇵🇭`, and `👨‍👩‍👧‍👦` count as one each even though JavaScript string length reports multiple UTF-16 code units.
 
 Use one shared function on client and server:
 
@@ -366,7 +414,32 @@ export function countVisibleCharacters(value: string): number {
 }
 ```
 
-Spaces, punctuation, and line breaks each count as one visible character. The counter should show states such as `Within recommendation`, `Approaching recommendation`, `Over recommendation`, `Special-case exemption`, and `Over platform maximum`.
+For the generic grapheme counter, spaces, punctuation, and line breaks each count as one visible character. When applicable, show the word-based organization recommendation and the platform-specific hard-limit counter as separate labeled measurements.
+
+### 6.7.1 Launch publication destinations
+
+The application prepares and validates content for manual publication only. It does not schedule or publish to external platforms. The owner-supplied, approved `v1` destination policy is stored as versioned configuration data in `Asia/Manila`, not in UI components.
+
+| Channel slug | Display label | Allowed content kinds | Character limit | Classification |
+| --- | --- | --- | ---: | --- |
+| `facebook` | Facebook | post, video | 63,206 | Platform-based |
+| `facebook_story` | FB Story | post, video | 2,000 | Organization-defined destination |
+| `facebook_community` | Facebook Community | post | 63,206 | Organization-defined, platform-aligned |
+| `instagram` | Instagram | post, video | 2,200 | Platform-based |
+| `instagram_story` | Instagram Story | post, video | 2,000 | Organization-defined destination |
+| `group_chat` | Group Chats | post | 2,000 | Organization-defined destination |
+| `x` | X (Twitter) | post | 280 | Platform hard limit for standard posts |
+| `tiktok` | TikTok | video, post | 4,000 | Platform-based |
+| `youtube` | YouTube | video | 5,000 | Platform hard limit for video descriptions |
+| `discord` | Discord | post | 2,000 | Platform hard limit for standard messages |
+| `linkedin` | LinkedIn | post | 3,000 | Platform hard limit for posts |
+| `acm_website` | ACM Website | post, article | 4,000 | Temporary organization-defined |
+
+Destination character counts include letters, numbers, whitespace, punctuation, hashtags, mentions, URLs, and emoji. They do not reuse O-029 word-count exclusions. Validate every selected destination independently and identify the specific failing channel. A content item above an applicable destination maximum cannot advance to ready-for-publication until corrected. The current app has no ready-for-publication workflow; this rule is enforced when that later workflow is implemented.
+
+The FB Story, Instagram Story, Facebook Community, and Group Chats values are intentional organization-managed limits, not verified provider hard limits. The `x` policy assumes standard 280-character posts and excludes Premium longer-post allowances. The Discord policy assumes the standard 2,000-character message limit and excludes Nitro's 4,000-character allowance. The ACM Website limit is a configurable temporary organization-defined value.
+
+Superseded destination policies remain stored. Content versions and formal review/approval records must retain the exact destination-policy version used for their historical evaluation.
 
 Test at least ordinary ASCII, combining accents, skin-tone emoji, flag emoji, family/ZWJ emoji, line breaks, and all supported Unicode style conversions. Visible count is a writing-policy measure, not byte size; if a social platform documents a different counting algorithm, keep a separate platform-specific counter.
 
@@ -481,7 +554,6 @@ flowchart TD
 - Supabase Auth for institutional identity
 - RLS for organization and project permissions
 - Realtime for workflow status, reactions, activity, and general app notifications
-- Storage for attachments and reference assets
 - `pgvector` for retrieving relevant approved caption examples
 - Edge Functions or database jobs for asynchronous embedding and sync tasks when needed
 
@@ -575,7 +647,6 @@ Do not authorize users by comparing only the username portion before `@`. Use an
 - `comment_mentions`
 - `reactions`
 - `approval_decisions`
-- `attachments`
 - `notifications`
 - `audit_events`
 
@@ -605,7 +676,7 @@ Never store raw integration secrets in ordinary exposed tables. Use deployment s
 - An executive without a relevant project assignment is read-only.
 - One reaction type per user, caption version, and reaction category.
 - Only approved tags associated with the selected content format can be attached.
-- A submitted version stores immutable editor JSON, plain text, normalized searchable text, and visible-character count.
+- A submitted version stores immutable editor JSON, plain text, normalized searchable text, word count, applicable platform-specific counts, and the exact evaluated policy-version references and values.
 - Collaboration-room access is granted only after server-side organization and project authorization.
 - An approved limit exception suppresses only the organization recommendation, never a documented platform hard limit.
 - A formal decision is valid only for the actor’s current workflow step.
@@ -906,8 +977,8 @@ Keep phases small enough to review and test independently.
 - Projects and content requests
 - Content formats, controlled tags, tag requests, destinations, and deliverables
 - Caption item creation and assignments
-- Configurable character-limit policies and special-case exceptions
-- Grapheme-aware visible-character counter
+- Configurable word-based recommendation policies and special-case exceptions
+- Shared versioned word counter plus grapheme-aware counters for character-based platform limits
 - Unicode Style Converter with normalized search text
 - Editor, immutable snapshots, and reactions
 - Optimistic concurrency
@@ -1035,8 +1106,9 @@ The MVP is ready for a controlled pilot when:
 - An override is visually distinct and audited.
 - Concurrent caption text, cursors, selections, anchored comments, and suggestions work between two browser sessions.
 - Content format and multi-tag selections follow the approved vocabulary.
-- Character recommendations come from the active database policy rather than a frontend constant.
-- Composite emoji count as one visible character and special cases are visibly exempted.
+- Word recommendations and approaching thresholds come from the active database policy rather than frontend constants.
+- Historical caption versions retain the exact policy versions and evaluated values used at submission.
+- Composite emoji count as one visible character for generic character-based platform limits, and special cases are visibly exempted only from organization recommendations.
 - Unicode styles can be applied and removed without breaking undo, collaboration, or normalized search.
 - Search returns historical approved captions.
 - The app survives a refresh without losing draft/version state.
@@ -1209,9 +1281,6 @@ These do not block repository planning, but they must be resolved before their r
 12. What are the official organization colors, logo usage rules, and typefaces?
 13. Will the team pay for managed Liveblocks/TipTap collaboration, or self-host Hocuspocus on Render/Fly?
 14. Is full tracked-changes suggestion mode required at launch, and is a paid TipTap add-on acceptable?
-15. Who can approve a caption-length special case?
-16. What is the organization-wide default character recommendation for each content format?
-17. Which publication destinations must exist at launch?
 
 ## 22. Current source notes
 
