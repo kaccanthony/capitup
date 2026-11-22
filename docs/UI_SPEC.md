@@ -6,7 +6,7 @@ This document is the proposed visual and interaction specification for the CapIt
 
 The design must use representative local fixtures in Phase 01. Controls for later features must be presented as inert previews, disabled actions, or clearly labeled future capabilities; they must not imply that an integration or authorization boundary exists.
 
-`docs/PRODUCT_SPEC.md` remains authoritative for product behavior. Official organization colors, logo rules, and typefaces remain unresolved in `docs/DECISIONS.md` O-010, so the palette and typography below are provisional, accessible defaults.
+`docs/PRODUCT_SPEC.md` remains authoritative for product behavior. The approved colors, logo rules, and typefaces are in [BRAND_GUIDELINES.md](BRAND_GUIDELINES.md) and decision A-031.
 
 ## Reference review
 
@@ -91,7 +91,7 @@ The card is approximately 420–480 px wide on desktop, constrained to the viewp
 3. concise heading such as **Welcome back**;
 4. explanation that access is limited to authorized organization members;
 5. primary **Continue with Institutional Account** action;
-6. a lower-page, collapsed "Use email instead" disclosure for the institutional email/password fallback only after O-002 and O-025 are resolved; Google and Microsoft remain the visible primary choices, and the UI must not offer magic links;
+6. a lower-page, collapsed "Use email instead" disclosure for the institutional email/password fallback only after O-002 and O-025 are resolved; Google remains the visible primary choice, and the UI must not offer magic links;
 7. generic status/error region that never reveals allowlist membership;
 8. short security/support note.
 
@@ -114,7 +114,7 @@ Utilities are visually separated near the bottom of the rail:
 - Settings, shown only when a future trusted authorization result permits it;
 - user/profile menu.
 
-The CapItUp mark sits at the top of the rail. The current destination uses a filled lavender-tinted capsule or rounded square plus a persistent text label in expanded layouts. Icon-only controls require tooltips and accessible names. Avoid a generic floating plus button at the top of the rail; **New caption** belongs in the page header so its purpose is explicit.
+The CapItUp artwork sits at the top of the rail on a dark circular badge, plus a persistent text label in expanded layouts. Icon-only controls require tooltips and accessible names. Avoid a generic floating plus button at the top of the rail; **New caption** belongs in the page header so its purpose is explicit.
 
 During Phase 01, navigation destinations may be static visual fixtures. Unimplemented routes must not lead to convincing but non-functional product screens.
 
@@ -161,7 +161,7 @@ Desktop page gutters are 32 px inside the primary workspace; compact desktop/tab
 
 ## Typography hierarchy
 
-Until official typefaces are approved, use a local/system sans-serif stack with high legibility and no network font dependency. Typography should be calm and editorial rather than futuristic.
+Use Space Grotesk for headings and Inter for body/UI, self-hosted through Next.js with system fallbacks. Typography should be calm and editorial rather than futuristic.
 
 | Role | Size / line height | Weight | Notes |
 |---|---|---:|---|
@@ -177,26 +177,26 @@ Use sentence case. Reserve uppercase for short status abbreviations only. Avoid 
 
 ## Color palette
 
-The palette starts from the product specification and adds role-specific surfaces. These are provisional until O-010 is resolved.
+The palette uses the supplied logo's black, charcoal, violet, and gold, with accessible text/surface variants documented in [BRAND_GUIDELINES.md](BRAND_GUIDELINES.md).
 
 | Token | Proposed value | Purpose |
 |---|---|---|
-| `canvas` | `#09030F` | page background |
-| `canvas-elevated` | `#10051A` | outer app frame |
-| `surface-1` | `#180A27` | navigation and major panels |
-| `surface-2` | `#211035` | cards and inputs |
-| `surface-3` | `#2C1545` | hover/selected surfaces |
-| `text-primary` | `#F5EFFF` | headings and primary content |
-| `text-secondary` | `#D1C2E4` | supporting content |
-| `text-muted` | `#AA98C2` | metadata that still meets contrast requirements |
-| `lavender` | `#A887E7` | primary accent and focus affordances |
-| `violet` | `#4B0082` | active navigation and gradient depth |
-| `slate` | `#6A4C85` | quiet borders and inactive decoration |
-| `attention` | `#EC630D` | urgent deadlines and attention states only |
+| `canvas` | `#08090D` | page background |
+| `canvas-elevated` | `#0E1016` | outer app frame |
+| `surface-1` | `#151820` | navigation and major panels |
+| `surface-2` | `#1F2428` | cards and inputs |
+| `surface-3` | `#292E34` | hover/selected surfaces |
+| `text-primary` | `#F5F3FF` | headings and primary content |
+| `text-secondary` | `#D5D2E2` | supporting content |
+| `text-muted` | `#B7B4C6` | metadata that still meets contrast requirements |
+| `lavender` | `#8C52FF` | primary accent |
+| `violet` | `#8C52FF` | active navigation and gradient depth |
+| `slate` | `#66696B` | quiet borders and inactive decoration |
+| `attention` | `#FADF66` | gold accent and priority highlights |
 | `success` | `#63C69A` | positive status with icon/text accompaniment |
 | `danger` | `#F07178` | destructive/error state with text accompaniment |
 
-Deep indigo around `#4B0082` is the provisional visual foundation, with lavender reserved for focus, elevation, and readable active states. Do not use orange as a decorative accent. It signals urgency, an approaching deadline, or a real attention condition. Approval and workflow states require text/icon labels and cannot rely on color alone.
+The approved celestial palette uses near-black/charcoal surfaces, electric violet, and gold. See [BRAND_GUIDELINES.md](BRAND_GUIDELINES.md) for logo, typography, and contrast rules. Approval and workflow states require text/icon labels and cannot rely on color alone.
 
 ## Gradients
 
@@ -272,7 +272,7 @@ On screens below the three-column threshold, the rail collapses behind a labeled
 The modal-like login card uses three visual zones:
 
 - **Identity zone:** CapItUp lockup, private-workspace label, heading, and concise authorization message.
-- **Action zone:** visible Google and Microsoft institutional-account controls, then a lower-page collapsed **Use email instead** disclosure that reveals the approved email/password fallback. Do not present a magic-link field.
+- **Action zone:** a visible Google institutional-account control, then a lower-page collapsed **Use email instead** disclosure that reveals the approved email/password fallback. Do not present a magic-link field.
 - **Support zone:** generic error/status message, help path, and a reminder that access is restricted.
 
 The primary action is at least 48 px high and spans the card width. Inputs, if enabled in a later phase, use persistent visible labels rather than placeholder-only labels. The active field may receive a restrained inner highlight inspired by the reference, but text and caret contrast must remain strong.
@@ -405,12 +405,9 @@ An implementation based on this specification may build the visual system, respo
 
 The following choices are intentionally not invented here:
 
-- official organization logo and wordmark treatment;
-- official colors and whether the provisional lavender/violet system should be adjusted;
-- official typeface or font licensing/hosting requirements;
 - institutional identity provider and approved fallback method;
 - institutional domain and exact login help/contact route;
 - whether the assistant rail should default open for all roles once AI is implemented;
 - final dashboard fixture names, people, and project/event copy suitable for screenshots.
 
-Until these are resolved, implementation should use a text-only CapItUp lockup, local/system fonts, synthetic names/content, and the provisional accessible tokens in this document.
+The logo, palette, and typography are resolved in [BRAND_GUIDELINES.md](BRAND_GUIDELINES.md). Use synthetic names/content until approved fixtures are available.

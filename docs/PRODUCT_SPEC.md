@@ -510,7 +510,7 @@ Adjust these to the organization’s actual branding before implementation.
 Use a centered glassmorphic login card over a subtle abstract gradient. Keep the form simple because this is an invitation-only app:
 
 - “Continue with Institutional Account” as the primary action
-- Google and Microsoft sign-in as the primary institutional-account choices
+- Google sign-in as the primary institutional-account choice
 - A collapsed "Use email instead" control in the lower part of the card. It reveals an institutional email/password fallback only when the member chooses it; it does not send a magic link.
 - No open “Create account” flow
 - A clear “This workspace is limited to authorized members” message
@@ -696,7 +696,7 @@ Never store raw integration secrets in ordinary exposed tables. Use deployment s
 
 ### 11.1 Recommended login model
 
-Use Supabase Auth with institutional Google OAuth and Microsoft OAuth as the primary sign-in methods. Provide an email/password fallback only when either OAuth service is unavailable or a member deliberately chooses the collapsed lower-page email option. Do not use email magic links as a fallback.
+Use Supabase Auth with institutional Google OAuth as the primary sign-in method. Provide an email/password fallback when Google OAuth is unavailable or a member deliberately chooses the collapsed lower-page email option. Do not use email magic links as a fallback.
 
 The fallback must use an approved institutional email, a confirmed email where Supabase requires confirmation, and the same allowlist/current-membership checks as OAuth. It is a recovery path, not a way to self-register or bypass the invitation boundary.
 
@@ -710,7 +710,7 @@ A blanket 24-hour lock on an email after five attempts is possible but creates a
 
 Use this safer design:
 
-- Prefer Google or Microsoft OAuth. Apply equivalent anti-brute-force controls to the email/password fallback.
+- Prefer Google OAuth. Apply equivalent anti-brute-force controls to the email/password fallback.
 - Apply Supabase’s built-in Auth rate limits.
 - Track denied access attempts using an email hash plus IP/device risk signals.
 - Show the same generic result for unknown and unauthorized identities.
@@ -922,7 +922,7 @@ Never place real values in `.env.example`, commits, screenshots, prompts, or iss
 - Organization-owned OpenAI API project
 - Organization-owned Notion connection
 - Notion workspace-owner assistance for the internal connection and content sharing
-- Institutional Google/Microsoft OAuth configuration if available
+- Institutional Google OAuth configuration if available
 
 ### Local tools
 
@@ -1272,7 +1272,7 @@ each hypothesis. Do not modify files, deploy, commit, or push.
 
 These do not block repository planning, but they must be resolved before their related phase:
 
-1. What institutional identity provider is available: Google, Microsoft, or email only?
+1. Is institutional Google OAuth available, or must the approved email/password fallback be used?
 2. What is the exact institutional email domain?
 3. Is the current Notion calendar a database calendar view or the separate Notion Calendar product?
 4. Which Notion properties already exist?

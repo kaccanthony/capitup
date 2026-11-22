@@ -98,3 +98,23 @@ test("supports keyboard focus and reduced motion on sign in", async ({
     ),
   ).toBe(true);
 });
+
+test("rejects anonymous collaboration and snapshot requests", async ({
+  request,
+}) => {
+  const projectId = "00000000-0000-4000-8000-000000000001";
+  const contentId = "00000000-0000-4000-8000-000000000002";
+
+  const room = await request.post(
+    `/api/liveblocks-auth/${projectId}/${contentId}`,
+  );
+  expect(room.status()).toBe(401);
+  expect(await room.text()).not.toContain("token");
+
+  const snapshot = await request.post(
+    `/api/collaboration-snapshot/${projectId}/${contentId}`,
+    { data: { templateId: "00000000-0000-4000-8000-000000000003" } },
+  );
+  expect([400, 401]).toContain(snapshot.status());
+  expect(await snapshot.text()).not.toContain("service_role");
+});

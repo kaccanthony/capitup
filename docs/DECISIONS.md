@@ -131,7 +131,7 @@
 ### A-021 - Phase 02 identity providers and email/password fallback
 
 - **Status:** Accepted on 2026-10-25; resolves O-001
-- **Decision:** Google OAuth and Microsoft Azure OAuth are CapItUp's primary institutional identity providers. The login interface will prioritize those choices. A member may deliberately reveal a lower-page email/password fallback when either OAuth service is unavailable or they choose an alternate approved sign-in method. Passwordless email magic links are not a CapItUp fallback.
+- **Decision:** Google OAuth is CapItUp's primary institutional identity provider. The login interface offers Google sign-in; a member may deliberately reveal a lower-page institutional email/password fallback. Microsoft Azure OAuth is no longer offered. Passwordless email magic links are not a CapItUp fallback.
 - **Authorization boundary:** Every provider path must still verify the approved institutional identity and pass the exact allowlist, invitation claim, active-membership, and RLS checks. The email/password path must not permit open registration, username/local-part matching, or membership discovery. Passwords remain managed by Supabase Auth and are never stored or handled by CapItUp application code.
 - **Configuration boundary:** No provider console, Supabase Auth setting, redirect URL, secret, or hosted project has been configured by this documentation decision. O-002 still determines approved domains and identity normalization; O-025 still determines CAPTCHA and rate-limit controls.
 
@@ -152,11 +152,12 @@
 
 ### A-025 - Independent approval of PRO-authored captions
 
-- **Status:** Partially accepted on 2026-10-26; partially resolves O-004
+- **Status:** Accepted on 2026-11-22; resolves O-004
 - **Decision:** A PRO cannot independently self-approve a caption they authored. A workflow instance must freeze exactly one independent alternative: Publicity Director only, one existing `executive` with an explicit President designation, or unanimous active `junior_officer` members. A President designation is separate authorization data, never a client-provided or display-only title.
-- **Junior-Officer roster rule:** The workflow snapshots every active Junior Officer at instance creation. A snapshot member who later becomes suspended, expires, or resigns is ignored for unanimity. The product does not define an availability-only membership state; it must not silently excuse a merely unavailable active member.
-- **Designation governance:** The website owner may grant or revoke the President designation. A `publicity_director` may revoke, but not grant, it. Both paths must be server-authorized, require a reason, and create immutable audit evidence. The owner is a server-managed allowlist authority, never a client-editable display label.
+- **Junior-Officer roster rule:** The workflow snapshots every active Junior Officer at instance creation. A snapshot member who later becomes suspended, expires, resigns, or is temporarily unavailable is ignored for unanimity while that condition holds. Availability expiry or revocation restores the frozen member's obligation if the step remains pending.
+- **Designation governance:** Only the website owner, Kent, may grant the President designation. The owner or a `publicity_director` may revoke it; a director may not grant it. Both paths must be server-authorized, require a reason, and create immutable audit evidence. The owner is a server-managed allowlist authority, never a client-editable display label.
 - **Availability governance:** A `publicity_director` or `pro` may mark an active Junior Officer temporarily unavailable, with a required audit reason. The frozen workflow roster must exclude that unavailable member from unanimity until the recorded availability ends or is revoked; suspension, expiry, and resignation remain independently non-blocking.
+- **Rationale:** Separating designation authority from ordinary roles prevents a director from appointing a President. A frozen roster preserves review accountability while documented absence and ended memberships cannot indefinitely block approval.
 
 ### A-026 - Phase 5 suggestion implementation
 
@@ -170,7 +171,7 @@
 - **Curatorship:** A `publicity_director` or `pro` may create and edit organization-default or campaign style profiles. An active `publicity_head` may create and edit campaign profiles only within their assigned project. A `publicity_director`, `pro`, `executive`, or eligible active `publicity_head` may activate the corresponding profile. Activation is server-authorized and audited; an Executive's exception applies only to style-profile activation, not caption editing or general settings.
 - **Personal samples:** Personal samples are private to the author by default. Authors may explicitly share a sample with the organization and later revoke that sharing; revocation excludes it from every future retrieval immediately. It does not retroactively alter historical generation provenance.
 - **Gemini development boundary:** Use `gemini-3.8-flash` as the current Gemini Flash model. Gemini Free is limited to synthetic/test content. Private organization captions, styles, samples, and prompts remain excluded until a provider/data-processing policy explicitly authorizes them.
-- **Quota, abuse control, and retention:** Allow at most 5 requests per user per rolling 10-minute window, 25 requests per user per UTC day, and 250 requests per organization per UTC day. A rate-limited account resets automatically when its 10-minute window expires; there is no manual unblock. Enforce these limits atomically against the authenticated account and organization, never a username. Retain AI generation logs for 180 days. Persist generated caption content only after a user explicitly inserts or saves it; a generation run may retain only the non-content provenance/usage necessary for the 180-day record. The broader O-023 retention decision remains open for other data classes.
+- **Quota, abuse control, and retention:** Allow at most 5 requests per user per rolling 10-minute window, 25 requests per user per UTC day, and 250 requests per organization per UTC day. A rate-limited account resets automatically when its 10-minute window expires; there is no manual unblock. Enforce these limits atomically against the authenticated account and organization, never a username. Under the later A-033 retention decision, retain AI generation logs indefinitely rather than the original 180 days. Persist generated caption content only after a user explicitly inserts or saves it; a generation run may retain only non-content provenance/usage.
 - **Evaluation gate:** Before private-caption use can be enabled with an approved provider, the versioned evaluation suite must show at least 80% human-reviewed acceptance. This does not override the Gemini Free synthetic-only boundary.
 
 ### A-028 - Phase 5 Liveblocks, canonical collaboration data, and revocation
@@ -182,19 +183,52 @@
 - **Revocation and offline behavior:** Assignment or membership changes revoke matching CapItUp collaboration sessions. The client promptly reloads or disconnects after observing the change. Offline support is disabled; edits produced after authorization expires or is revoked are not accepted as an authoritative snapshot or durable mutation. Users may copy unsent local text, but it cannot overwrite the canonical document automatically.
 - **Provider limitation:** The selected Liveblocks access-token API does not expose custom token expiry or active-token revocation. Four hours is therefore CapItUp's maximum application lease; Liveblocks may issue a shorter provider token. Prompt client downgrade/eviction is enforced through CapItUp revalidation, while hard provider-token expiry remains provider-controlled.
 
+### A-029 - Notion posting calendar and manual caption exchange
+
+- **Status:** Accepted on 2026-11-22; resolves O-019, O-020, and O-021. Implementation remains pending.
+- **Calendar surface:** The existing calendar is a calendar view of the Notion database **2627 Postings New** (database `3e6e30de-b33c-804c-9228-deea599d1d85`, data source `0c2e30de-b33c-8396-a4c8-878f7225124b`), grouped by **Posting Date & Time**. It is not a separate Notion Calendar account calendar. Restrict the internal integration to this shared data source; do not add a Google or Microsoft Calendar dependency for it.
+- **Record identity:** Each Notion row represents a posting/content item, not a CapItUp project. Link `notion_page_id` to one `content_item_id` within an explicitly selected project; do not infer a project from the row title or event label. Preserve existing Notion rows and their templates. The current project-level importer must be migrated before activating this data source.
+- **Field ownership:** Import `Post ID` (title) as the posting title, `Posting Date & Time` (date, nullable, Asia/Manila display) as the schedule, and `Deliverable Deadline` (date, nullable) as a reference deadline. Import `Event Name` (select) as an explicit event label only if a matching controlled project/event mapping exists. Keep `Assignee`, `Assigner`, `Priority`, `Deliverable STATUS`, `Post STATUS`, `SHOOTING DAY`, `Parent item`, `Sub-item`, and `🖌️ Creatives Non-Post Tasks` Notion-owned and untouched. The app owns caption text, version/approval history, and the manual export of `Caption STATUS`; map only to existing Notion options (`NOT STARTED`, `WRITING`, `FOR REVIEW`, `NEEDS REVISION`, `APPROVED`, `PUBLISHED`, `ON HOLD`, `NOT NEEDED`, `CANCELLED`) with an explicit conversion table. Never equate `Post STATUS` with approval. Resolve and pin actual Notion property IDs/types from the data source API during setup; reject missing or changed fields instead of writing by a guessed ID.
+- **Caption and viewer placement:** Add one dedicated `CapItUp Viewer` URL property to the data source. Its value is `${APP_ORIGIN}/projects/{projectId}/content/{contentItemId}/view`, with UUIDs resolved from a server-owned page-to-content link; it requires CapItUp sign-in and normal content-view authorization. Render a lightweight read-only view from the latest authorized Supabase snapshot/approved version, without issuing a Liveblocks write token. Store the exchangeable caption in a clearly tagged `CapItUp Caption` section of the linked Notion page; never replace the page's task template, unrelated blocks, or attachments.
+- **Manual exchange:** Only a user click starts Push or Pull/Reconcile. No caption body is sent or ingested by webhooks, approval callbacks, or background jobs. Capture the local content/version hash and the Notion caption-section hash plus page edit time before either direction. Re-read both before writing. On divergence from the last common hash, show both versions and require an explicit choice; never silently overwrite. A Notion edit is not an approved CapItUp version: pulling changed text creates a new draft/version through the normal server workflow and invalidates any affected approval before it can be approved again. An unchanged Notion copy of an approved CapItUp version retains that approval. Never mutate immutable submitted versions.
+- **Conversion and failure:** Convert supported Tiptap JSON nodes/marks to Notion paragraph/rich-text blocks and back with a restricted, sanitized converter. Preserve paragraph breaks, emoji, hashtags, and supported links; reject or visibly flag unsupported nodes/marks. Chunk each Notion rich-text text object to at most 2,000 characters without splitting Unicode surrogate pairs. Commit local Supabase edits and approval decisions before any independent Notion request. A Notion 429, timeout, validation error, or conflict records a retryable sync state and shows a manual Retry control; it never rolls back local approval. Store hashes, direction, actor, timestamps, and conflict/audit evidence in Supabase.
+- **Rationale:** The live database schema and sample posting page show schedule fields and task-template content, but no caption property or CapItUp link. A dedicated caption section and URL property preserve that existing workflow while keeping Supabase authoritative for approval and Liveblocks authoritative only for live editing.
+
+### A-030 - Institutional identity and role display
+
+- **Status:** Accepted on 2026-11-22; resolves O-002 and O-006.
+- **Identity:** `@fit.edu.ph` is the institutional email domain. An exact email outside that domain may still be admitted when the owner approves and records it in the server-managed allowlist. Domain membership alone never grants access; every account still needs a current allowlist entry and active membership. Normalize by trimming and lowercasing the full email, and never match only the username/local part.
+- **Role display:** Show every active organization role, sorted highest first: `org_admin`, `executive`, `pro`, `publicity_director`, `junior_officer`. This is presentation order only; permissions are the union of each explicitly assigned active role and are not inherited from the display rank.
+- **Rationale:** The exact allowlist allows owner-approved external collaborators without opening registration. A stable role order keeps multi-role identity readable without changing authorization.
+
+### A-031 - CapItUp brand from supplied artwork
+
+- **Status:** Accepted on 2026-11-22; resolves O-010. See [BRAND_GUIDELINES.md](BRAND_GUIDELINES.md).
+- **Decision:** Use the supplied square celestial pen illustration unchanged as the official image mark, with a separate CapItUp text lockup. Base the dark UI on its black/charcoal field, electric violet `#8C52FF`, and starlight gold `#FADF66`. Use Space Grotesk for headings and Inter for body/UI. Do not invent a recolored or light-background logo variant; use the original image on a dark badge when the surrounding surface is light.
+- **Rationale:** The artwork contains no embedded wordmark or isolated small icon. Separating the type lockup preserves its visual identity and keeps the product name readable at small sizes.
+
+### A-032 - In-app notifications only
+
+- **Status:** Accepted on 2026-11-22; resolves O-022 and confirms A-024.
+- **Decision:** CapItUp sends no email notifications. Keep workflow and other product notifications in-app only; no email notification provider, sender domain, delivery tracking, or unsubscribe flow is needed.
+- **Rationale:** The accepted MVP notification channel already covers the requested workflow without external delivery operations.
+
+### A-033 - Indefinite data retention
+
+- **Status:** Accepted on 2026-11-22; resolves O-023 and supersedes A-027's former 180-day AI-log limit.
+- **Decision:** Retain drafts, soft-deleted items, audit history, collaboration state, sync logs, security events, and AI generation logs indefinitely. Do not schedule deletion or anonymization for these records. Generated caption content still persists only after a user explicitly inserts or saves it, as A-027 requires.
+- **Rationale:** The organization wants complete historical and audit records. This increases storage and privacy exposure; access controls, backups, and any future legal deletion requirement still need separate operational handling.
+
+### A-034 - Backup and recovery targets
+
+- **Status:** Accepted on 2026-11-22; resolves O-024 as a policy target. Restore execution remains unverified.
+- **Decision:** On a paid tier, use Supabase daily automated backups or enable its PITR add-on for finer recovery points; Supabase stops separate daily backups while PITR is enabled. On a free tier, take a manual `pg_dump` at least weekly. Target RPO (maximum acceptable data loss) is 24 hours and RTO (time to restore service from backup plus redeploy) is 4 hours. The Publicity Director (Kent) is primary operator, with one designated backup person. Test a full restore quarterly. Recovery scope includes the database, securely stored `.env` secrets, migration files, and Git-managed code.
+- **Operational gap:** Weekly `pg_dump` alone cannot meet a 24-hour RPO: up to seven days of changes could be lost. A free-tier deployment needs at least daily verified backups or an explicitly relaxed RPO before claiming the target is met. The backup person must be named and a quarterly restore test must be recorded. Store secrets in a protected backup vault, never in Git. Supabase's [backup documentation](https://supabase.com/docs/guides/platform/backups) distinguishes paid daily backups, the optional PITR add-on, and manual free-tier exports.
+
 ## Open decisions
 
 | ID | Decision needed | Must resolve before | Required outcome/evidence |
 |---|---|---|---|
-| O-002 | Exact institutional email domain(s) and normalization rules | Phase 2 | Approved domains and exception process |
-| O-006 | Organization role cardinality and primary-title presentation for people holding multiple roles | Phase 2 | Storage/UI rule without reducing authorization to one role |
-| O-010 | Official colors, logo rules, and typefaces | The UI-foundation phase for final branding; placeholders may precede it | Approved brand inputs; otherwise retain provisional accessible tokens |
-| O-019 | Whether the existing Notion calendar is a database view or the separate Notion Calendar product | Phase 7 | Confirmed integration surface; use source calendar API if required |
-| O-020 | Existing Notion properties and exact field ownership/mapping | Phase 7 | Property IDs/types, source of truth, direction, null/conflict rules |
-| O-021 | Whether final approved captions sync to Notion | Phase 7 | Explicit opt-in field, direction, sanitization, failure behavior |
-| O-022 | Email provider, sender domain, authentication, and delivery/unsubscribe rules after the accepted in-app-only MVP | Before external email; Phase 8 before pilot | Provider, sender domain, unsubscribe/delivery rules |
-| O-023 | Retention for drafts, deleted items, audit history, collaboration state, sync logs, and security events | Before production data in affected phase; no later than Phase 8 | Per-class duration, deletion/anonymization, legal owner; AI logs are set by A-027 |
-| O-024 | Backup frequency, recovery point/time objectives, and responsible operator | Phase 8 | Documented targets and successful recovery exercise |
 | O-025 | CAPTCHA/rate-limit provider, thresholds, and administrative unblock procedure for authentication | Phase 2 | AI limits and automatic reset are set by A-027; authentication still needs an abuse policy that cannot globally lock another person's account |
 | O-027 | Pilot participants, support owner, metrics baseline/targets, and exit criteria | Phase 8 | Approved pilot charter and privacy-safe measurement plan |
 | O-028 | Permanent phase numbering after the user-directed Phase 01 foundation: retire/rename the earlier Phase 0 and UI-foundation files, or re-sequence the remaining roadmap | Before authorizing the next implementation phase | One unambiguous phase sequence reflected consistently in `PLANS.md` and `harness/build/` |

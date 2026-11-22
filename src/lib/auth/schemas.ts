@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const signInRequestSchema = z.object({
   email: z.string().trim().email().max(254),
+  password: z.string().min(1).max(1024),
   next: z.string().trim().max(2048).optional(),
-  captchaToken: z.string().trim().max(4096).optional(),
 });
 
 export const invitationInputSchema = z.object({

@@ -36,5 +36,5 @@ export async function GET(request: NextRequest) {
   }
 
   await client.auth.signOut();
-  return redirect(request, "/access-denied");
+  return redirect(request, "/access-denied?reason=allowlist");
 }

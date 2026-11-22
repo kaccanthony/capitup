@@ -6,7 +6,12 @@ export const metadata = {
   title: "Access unavailable",
 };
 
-export default function AccessDeniedPage() {
+export default async function AccessDeniedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
+  const { reason } = await searchParams;
   return (
     <main className="login-page" aria-labelledby="access-denied-title">
       <div className="login-glow login-glow-left" aria-hidden="true" />
@@ -24,14 +29,15 @@ export default function AccessDeniedPage() {
           Access unavailable.
         </h1>
         <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
-          We could not complete access to this workspace. Contact an
-          organization administrator if you believe you should have access.
+          {reason === "allowlist"
+            ? "This account is not on the active organization allowlist. Contact an administrator if you should have access."
+            : "We could not complete access to this workspace. Contact an organization administrator if you believe you should have access."}
         </p>
         <div className="login-notice">
           <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />
           <p>
-            This message does not confirm whether an invitation or account
-            exists.
+            Ask an organization administrator to review your access if this is
+            unexpected.
           </p>
         </div>
         <Link className="login-return-link mt-6" href="/login">
