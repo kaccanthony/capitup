@@ -1,4 +1,5 @@
 import { getServerEnvironment } from "@/lib/env/server";
+import { timingSafeEqual } from "node:crypto";
 import { acceptVerifiedNotionWebhook, sha256 } from "@/features/notion/data";
 import { synchronizeNotionWebhookImport } from "@/features/notion/sync";
 import { verifyNotionWebhook } from "@/features/notion/webhook";
@@ -20,6 +21,33 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   if (rawBody.length > 1_000_000) {
     return Response.json({ error: "Invalid webhook." }, { status: 400 });
+  }
+
+  // Notion's initial subscription verification has no event signature.
+  let verification: unknown;
+  try {
+    verification = JSON.parse(rawBody);
+  } catch {
+    return Response.json({ error: "Invalid webhook." }, { status: 400 });
+  }
+  if (
+    verification !== null &&
+    typeof verification === "object" &&
+    "verification_token" in verification &&
+    Object.keys(verification).length === 1
+  ) {
+    const candidate = verification.verification_token;
+    const expected = Buffer.from(environment.NOTION_WEBHOOK_SECRET);
+    const received =
+      typeof candidate === "string" ? Buffer.from(candidate) : null;
+    if (
+      !received ||
+      received.length !== expected.length ||
+      !timingSafeEqual(received, expected)
+    ) {
+      return Response.json({ error: "Invalid webhook." }, { status: 401 });
+    }
+    return Response.json({ received: true }, { status: 200 });
   }
 
   const verified = await verifyNotionWebhook({
