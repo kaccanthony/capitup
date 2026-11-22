@@ -7,6 +7,7 @@ const publicApplicationPaths = new Set([
   "/login",
   "/access-denied",
   "/auth/callback",
+  "/api/notion/webhook",
 ]);
 
 export function isProtectedApplicationPath(pathname: string) {
@@ -36,6 +37,11 @@ function redirectWithCookies(sourceResponse: NextResponse, destination: URL) {
 }
 
 export async function updateSupabaseSession(request: NextRequest) {
+  // Notion cannot present an app session; the webhook route validates its token/signature.
+  if (request.nextUrl.pathname === "/api/notion/webhook") {
+    return NextResponse.next({ request });
+  }
+
   const configuration = getSupabasePublicConfiguration();
 
   if (!configuration) {
