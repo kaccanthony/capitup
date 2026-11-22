@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import {
   Archive,
   ArrowUpRight,
-  Bell,
   CalendarDays,
   Check,
   ChevronRight,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/capitup/brand-mark";
 import { Button } from "@/components/ui/button";
+import { NotificationCenter } from "@/features/notifications/notification-center";
 
 type NavigationItem = {
   view: WorkspaceView;
@@ -219,13 +219,6 @@ function PrimaryNavigation({ view }: { view: WorkspaceView }) {
 
       <div className="mt-auto flex flex-col items-center gap-2">
         <span className="nav-item nav-item-disabled" aria-disabled="true">
-          <Bell aria-hidden="true" className="size-5" strokeWidth={1.7} />
-          <span className="nav-label">Alerts</span>
-          <span className="nav-tooltip" role="tooltip">
-            Notifications
-          </span>
-        </span>
-        <span className="nav-item nav-item-disabled" aria-disabled="true">
           <CircleUserRound
             aria-hidden="true"
             className="size-5"
@@ -326,14 +319,6 @@ function DashboardHeader({
     <header className="dashboard-header">
       <div className="mobile-brand">
         <BrandMark />
-        <button
-          className="icon-button"
-          type="button"
-          aria-label="Open notifications"
-          disabled
-        >
-          <Bell aria-hidden="true" className="size-4" />
-        </button>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-6">
@@ -786,6 +771,7 @@ export function DashboardShell({
       </a>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
+      <NotificationCenter />
 
       <div className="app-frame">
         <PrimaryNavigation view={view} />

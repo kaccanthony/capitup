@@ -16,9 +16,13 @@ The offline portion of Phase 02 is implemented under A-015. It adds a version-co
 
 Phase 02 remains **offline-implemented but not hosted-verified**. The user subsequently and explicitly selected `harness/build/phase-03-projects-content.md` as the active narrow implementation plan despite unresolved roadmap numbering under O-028.
 
-That Phase 03 slice is now **offline-implemented but not database-verified**. It adds the additive project/content migration, controlled taxonomy, temporal assignments, server-only authorization/data access, project/content metadata UI, offline tests, and pending hosted pgTAP/RLS tests. No migration has been applied to a database, and no hosted project was contacted. Caption bodies, immutable caption versions, approval workflows, the collaborative editor, realtime, AI, Notion, attachments, and deployment have not begun.
+That Phase 03 slice is now **offline-implemented but not database-verified**. It adds the additive project/content migration, controlled taxonomy, temporal assignments, server-only authorization/data access, project/content metadata UI, offline tests, and pending hosted pgTAP/RLS tests. No migration has been applied to a database, and no hosted project was contacted. This was the state before the later user-directed implementation slices.
 
-The exact next permitted task is review or explicitly authorized isolated hosted-development migration/RLS verification for Phases 02 and 03. It is not permission to begin the historical caption-drafting/version plan or Phase 04.
+By explicit user direction, Phase 07 now has an **offline-implemented, not hosted-verified** Notion integration slice. It contains a forward-only migration, server-only internal-integration boundary, restricted title/event/deadline imports, signed-webhook/idempotency/retry/recovery behavior, and local unit/integration/browser evidence. It deliberately does not configure exports or final captions while O-019/O-020/O-021 remain unresolved. No migration, Notion connection, or hosted project was contacted.
+
+The exact next permitted task is explicitly authorized isolated hosted-development migration/RLS verification: inspect the remote ledger, apply only missing forward migrations (including the Phase 07 migration), and run allowed/denied/cross-organization plus signed-webhook/idempotency/retry/recovery checks against explicitly shared development content. It is not permission to use production, deploy, or reapply recorded migrations.
+
+Phase 05 has an initial local authorization route and stale-suggestion utility, but its 2026-10-26 closeout audit found no fully verified acceptance criterion. It remains **open** pending complete collaboration implementation and approved-environment evidence.
 
 ## Product guardrails
 

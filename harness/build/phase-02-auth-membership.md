@@ -18,7 +18,6 @@ Implementation must not start until all of the following are satisfied:
 
 - Phase 01 remains complete and its fixture-only application shell is the starting point.
 - O-028 resolves the permanent phase sequence and identifies this file as the active Phase 02 plan.
-- O-001 selects the institutional identity provider and any permitted fallback.
 - O-002 records the exact approved institutional domain or domains, email normalization rules, and exception process.
 - O-006 resolves whether a person may hold multiple simultaneous organization roles and how a primary display title is chosen. Authorization must still use every current role, not the display title.
 - O-025 selects CAPTCHA/rate-limit controls, thresholds, risk signals, cooldown behavior, and the administrative unblock procedure.
@@ -30,7 +29,7 @@ Implementation must not start until all of the following are satisfied:
 
 ### In scope
 
-- Supabase Auth session handling for the identity flow selected by O-001.
+- Supabase Auth session handling for Google OAuth, Microsoft Azure OAuth, and the deliberately disclosed institutional email/password fallback accepted in A-021. Passwordless email magic links are excluded.
 - Public self-registration disabled, with a Before User Created hook or an equivalently trusted Supabase control that checks the active allowlist before creating an account.
 - Verification against the full normalized institutional email or an explicitly approved immutable provider subject. A username or the portion before `@` is display data only.
 - Invitation and allowlist creation, expiration, revocation, one-time claim, replay rejection, and atomic binding to `auth.users.id`.
@@ -99,7 +98,7 @@ Names below are the proposed logical contract. Migration identifiers and physica
 #### `organization_identity_requirements`
 
 - `id uuid` primary key and `organization_id uuid` foreign key.
-- Accepted provider identifier and verified claim type selected by O-001.
+- Accepted Google, Microsoft Azure, or email/password provider identifier and its verified claim type under A-021.
 - Approved normalized email domain or another accepted identity rule selected by O-002.
 - `enabled boolean`, creation/update timestamps, and responsible administrator.
 - A unique constraint prevents duplicate active rules for the same organization/provider/claim combination.
@@ -116,7 +115,7 @@ Names below are the proposed logical contract. Migration identifiers and physica
 #### `member_allowlist`
 
 - `id uuid` primary key and `organization_id uuid` foreign key.
-- Exact normalized institutional email and/or provider plus immutable provider subject, according to O-001 and O-002.
+- Exact normalized institutional email and/or provider plus immutable provider subject, according to A-021 and O-002.
 - `status allowlist_entry_status`, invitation issue/expiry/claim/revocation timestamps, and inviter/revoker IDs.
 - A cryptographic digest of any one-time invitation token; never the raw token.
 - `claimed_by_user_id uuid` nullable until claim, then bound immutably to `auth.users.id`.
@@ -209,7 +208,7 @@ Additional policy requirements:
 
 ## Login protection and generic errors
 
-- Prefer the O-001 OAuth or magic-link flow to reduce password brute-force exposure.
+- Prioritize Google and Microsoft OAuth. Reveal the institutional email/password fallback only after an explicit lower-page user action, and protect it with the same or stronger O-025 abuse controls.
 - Enable Supabase Auth's applicable provider rate limits and the accepted O-025 CAPTCHA control.
 - Use progressive cooldowns and the accepted IP/device-risk plus identifier scope. Never globally disable a legitimate identity because another person repeatedly submits its username or email.
 - Hash identifiers used for abuse correlation with a server-held secret and retain them only as long as O-023 permits.
@@ -286,7 +285,7 @@ Exact filenames may be adjusted to existing conventions, but implementation is e
 
 ## Acceptance criteria
 
-- O-001, O-002, O-006, O-025, and O-028 are resolved and reflected in code/tests without weakening this plan.
+- A-021, O-002, O-006, O-025, and O-028 are reflected in code/tests without weakening this plan.
 - Public self-registration is disabled, and user creation/claim requires a current allowlist invitation matching the verified full identity.
 - A matching username alone, a same-domain but uninvited address, and a different-domain lookalike cannot create or claim membership.
 - A valid invited identity can complete the accepted login flow, claim exactly its intended invitation once, and become bound to its immutable Supabase user ID.
@@ -378,7 +377,7 @@ Verification must also include:
 
 ## Evidence that must be recorded
 
-- Accepted O-001, O-002, O-006, O-025, and O-028 decisions and the non-production environment authorization, without secret values.
+- Accepted A-021, O-002, O-006, O-025, and O-028 decisions and the non-production environment authorization, without secret values.
 - Migration identifiers and schema inventory, including constraints, indexes, functions, grants, triggers, and RLS policies per table/operation.
 - A persona-by-operation authorization matrix showing observed allowed and denied results, including cross-organization and executive mutation attempts.
 - Before User Created, invitation claim/replay, suspension/expiry, callback-state, generic-error, and abuse-control observations.

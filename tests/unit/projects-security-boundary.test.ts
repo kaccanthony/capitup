@@ -122,6 +122,17 @@ describe("Phase 03 database and server boundaries", () => {
     );
   });
 
+  it("normalizes the special-case reason before metadata comparison", async () => {
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("v_special_case_reason text;");
+    expect(migration).toContain("v_special_case_reason := case");
+    expect(migration).toContain("special_case_reason = v_special_case_reason,");
+    expect(migration).toContain(
+      "v_item.special_case_reason is distinct from v_special_case_reason then",
+    );
+  });
+
   it("keeps data access server-only and reauthorizes inside server actions", async () => {
     const data = await readFile("src/features/projects/data.ts", "utf8");
     const actions = await readFile("src/features/projects/actions.ts", "utf8");

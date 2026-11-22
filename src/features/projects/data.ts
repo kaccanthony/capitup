@@ -225,6 +225,7 @@ export async function getControlledTaxonomy(): Promise<TaxonomyOption[]> {
 
 export type ContentDetailDto = {
   id: string;
+  organizationId: string;
   projectId: string;
   title: string;
   kind: ContentKind;
@@ -233,6 +234,11 @@ export type ContentDetailDto = {
   isSpecialCase: boolean;
   specialCaseReason: string | null;
   recordVersion: number;
+  draft: {
+    editorJson: Database["public"]["Tables"]["caption_drafts"]["Row"]["editor_json"];
+    plainText: string;
+    version: number;
+  } | null;
   deliverables: {
     id: string;
     label: string;
@@ -274,6 +280,7 @@ export async function getAccessibleContentItem(
     deliverablesResult,
     contentAssignmentsResult,
     projectAssignmentsResult,
+    draftResult,
   ] = await Promise.all([
     context.client
       .from("content_formats")
@@ -300,6 +307,11 @@ export async function getAccessibleContentItem(
       .select("id,membership_id,role,revoked_at")
       .eq("project_id", item.project_id)
       .is("revoked_at", null),
+    context.client
+      .from("caption_drafts")
+      .select("editor_json,plain_text,draft_version")
+      .eq("content_item_id", item.id)
+      .maybeSingle(),
   ]);
 
   if (
@@ -309,6 +321,7 @@ export async function getAccessibleContentItem(
     deliverablesResult.error ||
     contentAssignmentsResult.error ||
     projectAssignmentsResult.error ||
+    draftResult.error ||
     !formatsResult.data
   ) {
     throw new ProjectAccessError();
@@ -334,6 +347,7 @@ export async function getAccessibleContentItem(
 
   return {
     id: item.id,
+    organizationId: item.organization_id,
     projectId: item.project_id,
     title: item.title,
     kind: formatsResult.data.slug,
@@ -344,6 +358,13 @@ export async function getAccessibleContentItem(
     isSpecialCase: item.is_special_case,
     specialCaseReason: item.special_case_reason,
     recordVersion: item.record_version,
+    draft: draftResult.data
+      ? {
+          editorJson: draftResult.data.editor_json,
+          plainText: draftResult.data.plain_text,
+          version: draftResult.data.draft_version,
+        }
+      : null,
     deliverables: (deliverablesResult.data ?? []).map((deliverable) => ({
       id: deliverable.id,
       label: deliverable.label,
@@ -360,7 +381,7 @@ export async function getAccessibleContentItem(
       }),
     ),
     canEdit:
-      item.status === "draft" &&
+      (item.status === "draft" || item.status === "changes_requested") &&
       canEditContent({
         actorOrganizationId: context.organizationId,
         resourceOrganizationId: item.organization_id,
@@ -512,5 +533,40 @@ export async function assignContentResponsibility(input: {
       p_project_assignment_id: input.projectAssignmentId,
       p_responsibility: input.responsibility,
     }),
+  );
+}
+
+export async function saveCaptionDraft(input: {
+  contentItemId: string;
+  expectedVersion: number;
+  plainText: string;
+}) {
+  const { client } = await getActiveContext();
+  return runRpc(() =>
+    client.rpc(
+      "save_caption_draft" as never,
+      {
+        p_content_item_id: input.contentItemId,
+        p_expected_version: input.expectedVersion,
+        p_editor_json: { type: "doc", content: [] },
+        p_plain_text: input.plainText,
+      } as never,
+    ),
+  );
+}
+
+export async function submitCaptionVersion(input: {
+  contentItemId: string;
+  expectedDraftVersion: number;
+}) {
+  const { client } = await getActiveContext();
+  return runRpc(() =>
+    client.rpc(
+      "submit_caption_version" as never,
+      {
+        p_content_item_id: input.contentItemId,
+        p_expected_draft_version: input.expectedDraftVersion,
+      } as never,
+    ),
   );
 }

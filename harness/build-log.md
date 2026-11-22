@@ -1,6 +1,96 @@
 # CapItUp build log
 
+## 2026-11-15 - Phase 07 Notion integration offline implementation
+
+- Added the unapplied forward-only migration `20261115000200_phase_07_notion_integration.sql` and pending hosted pgTAP suite `supabase/tests/notion_integration_rls.test.sql`. The migration stores only Notion references and sync evidence: integration connections, page links, cursors, webhook events, sync runs, conflicts, dead letters, and audits. Every exposed table has RLS; browser clients have read-only, scoped access; trusted imports require `service_role`; Notion-owned title/event/deadline fields cannot be overwritten through ordinary project updates.
+- Added server-only Notion client, mapping, webhook-signature/freshness, retry, data-access, and orchestration modules; raw-body `/api/notion/webhook`; organization-admin setup/status/recovery UI at `/settings/integrations/notion`; and a protected-browser-route assertion. `@notionhq/client` `5.31.1` is installed. Tokens are deployment-only and are neither persisted nor rendered.
+- The implementation accepts only three configured imports (project title, event date, deadline). App-owned exports and every caption/version/final-caption field remain disabled because O-020/O-021 are unresolved. Invalid mapped properties create conflicts rather than retry loops; transient failures use 1/5/15/60-minute backoff before dead-lettering; authorized replay can recover a degraded connection. No provider request was made.
+- Local verification passed: focused Phase 07 unit tests (6 files, 10 tests); `npm.cmd run test -- --pool=threads --maxWorkers=1 --isolate=false --reporter=dot` (37 files, 123 tests); `npm.cmd run test:integration -- --pool=threads --maxWorkers=1 --reporter=dot` (2 files, 5 tests); `npm.cmd run lint`; `npm.cmd run typecheck`; targeted Prettier; and `node scripts/run-e2e.mjs` with synthetic public values (6 Chromium tests). A synthetic `npm.cmd run build` compiled successfully, completed TypeScript, and collected page data without an emitted error. `git diff --check` found no whitespace errors, only existing LF-to-CRLF warnings.
+- `npm.cmd run format:check` remains non-green only for pre-existing/unrelated dirty files: `notes/blocks.md`, `src/features/projects/actions.ts`, `tests/unit/projects-schemas.test.ts`, and `tests/unit/workflow-prerequisite.test.ts`. Phase 07 authored TypeScript/TSX files pass targeted Prettier.
+- No Docker command, local Supabase container, hosted Supabase/Notion request, migration application, deployment, production operation, commit, or push occurred. `supabase/.temp/project-ref` is absent, so the migration and pgTAP/RLS tests cannot be applied or run automatically. O-019 (calendar surface), O-020 (actual property ownership/mapping), O-021 (final-caption export), and O-023 retention remain external phase blockers.
+
+## 2026-11-08 - Phase 05 managed-Liveblocks collaboration slice
+
+- Recorded A-028 as the accepted provider/storage/revocation boundary: managed Liveblocks only; Supabase-canonical durable comments, replies, mentions, resolutions, suggestions, reactions, and audit evidence; four-hour maximum CapItUp lease with reconnect/minute revalidation; prompt downgrade/eviction; offline collaboration disabled.
+- Added the unapplied additive `20261026000700_phase_05_collaboration.sql` migration. It defines collaboration rooms/sessions, durable review records, Yjs-relative anchors, version-bound non-binding reactions, trusted security-definer operations, assignment/membership revocation triggers, RLS/select-only browser grants, Realtime publications, and exact snapshot-to-workflow submission.
+- Added the Liveblocks authorization/access routes, exact provider-snapshot route, TipTap/Yjs editor workspace, presence and access-state UI, durable anchored comments/replies/mentions/resolution, custom suggestions with stale application checks, live workflow status, reactions, current-caption notification center, and immutable snapshot handoff. Added `y-prosemirror` as a direct dependency for snapshot and relative-position conversion.
+- Added `docs/api/collaboration.openapi.json` as the local collaboration route contract plus focused contract, route-boundary, schema, and suggestion tests.
+- Focused collaboration verification passed: Vitest 4 files / 15 tests, focused ESLint, focused Prettier, and `npm.cmd run typecheck`. Broader test/lint/build results are recorded below after completion.
+- No SQL migration, hosted Supabase mutation, Liveblocks room connection, deployment, production operation, commit, or push ran. PostgreSQL/RLS behavior and two-browser/provider acceptance remain unverified; Docker remains intentionally unavailable.
+
 Record only observed work and command results. Planned verification belongs in phase files, not in this log.
+
+## 2026-11-06 - Phase 04 approval-invalidation policy
+
+- Accepted A-023 fully and resolved O-005: scheduled publication time is the only approval-preserving edit. Caption content, title, kind, tags, destinations, deliverables, content assignments, special-case settings, and evaluated-policy changes invalidate the affected approval and require a new review state.
+- Added the forward-only, unapplied `20261026000600_phase_04_approval_invalidation.sql` migration. It preserves immutable historical decisions, moves the current workflow and content to `changes_requested`, appends a `reopened` workflow audit event, and notifies the submitting author when another actor causes invalidation.
+- Added database triggers at the trusted boundary for caption drafts, approval-sensitive content metadata, destinations, deliverables, and content assignments. Added a policy-evaluation fingerprint whose change invalidates approval.
+- Added `scheduled_publication_at` and a trusted optimistic-concurrency update function that deliberately does not invalidate approval. Updated the draft and metadata RPCs so authorized revisions to in-review or approved content reopen review; published and archived content remain protected.
+- Added migration-derived TypeScript fields/RPC types and `tests/unit/approval-invalidation.test.ts`.
+- Initial focused test run failed as intended because the migration did not exist: 1 file, 3 failed tests. After implementation, the focused Phase 04 run passed: 3 files and 6 tests.
+- Targeted Prettier check passed. `npm.cmd run typecheck` and `npm.cmd run lint` completed with exit 0. The full Vitest run passed: 22 files and 88 tests.
+- Synthetic-environment `npm.cmd run build` exited 0 after compiling, type-checking, and generating all 12 pages. No provider or hosted Supabase request was made.
+- The migration has not been applied or runtime-tested against PostgreSQL. Docker remains intentionally unavailable. Hosted verification must apply the unapplied Phase 04 migrations in order and then exercise allowed, denied, stale, cross-organization, audit, notification, and scheduled-time-preservation cases.
+
+## 2026-10-26 - Phase 06 Gemini synthetic-development start
+
+- User authorized Phase 06 despite the open Phase 04/05 gates and selected Gemini Free only. A-007 and the Phase 06 plan now require synthetic/test content only; private organization captions must not be sent to Gemini Free.
+- Replaced the unused `OPENAI_API_KEY` configuration with server-only `GEMINI_API_KEY`; added the official `@google/genai` SDK and `src/features/ai/gemini.ts` client factory. The factory does not issue a provider request and returns a generic unavailable error when no key is configured.
+- Added `tests/unit/gemini-provider.test.ts` and updated environment validation coverage.
+- `rtk proxy .\\node_modules\\.bin\\vitest.cmd run tests/unit/environment.test.ts tests/unit/gemini-provider.test.ts --pool=forks` - passed: 2 files, 5 tests.
+- `rtk proxy npm.cmd run typecheck` - completed with no TypeScript diagnostics.
+- Targeted Prettier check passed after excluding `.env.example`, which has no configured parser. `git diff --check` completed with existing LF-to-CRLF warnings only.
+- Phase 06 remains open. Curatorship, personal-sample consent, model/quota/retention/evaluation thresholds, AI abuse controls, retrieval/RLS, structured generation, and live/provider evaluation remain unimplemented and unresolved.
+
+## 2026-10-27 - Phase 06 structured-output contract
+
+- Added `src/features/ai/contracts.ts`: a validated confirmed-brief contract, the initial AI action set, structured caption-variant output, and a generic failure path for malformed model output. `generate_three_directions` accepts exactly three variants; unknown provider fields are discarded.
+- Added `tests/unit/ai-contracts.test.ts` for confirmed briefs, three-direction validation, unknown-field stripping, malformed output, and invalid variant-count rejection. This does not call Gemini or transmit any caption content.
+- `rtk proxy .\\node_modules\\.bin\\vitest.cmd run tests/unit/ai-contracts.test.ts tests/unit/environment.test.ts tests/unit/gemini-provider.test.ts --pool=forks` - passed: 3 files, 8 tests.
+- `rtk proxy .\\node_modules\\.bin\\prettier.cmd --check src/features/ai/contracts.ts tests/unit/ai-contracts.test.ts` - passed after formatting `src/features/ai/contracts.ts`.
+- `rtk proxy npm.cmd run typecheck` - completed with no TypeScript diagnostics. `git diff --check` completed with existing LF-to-CRLF warnings only.
+- Phase 06 remains open: this is a contract-only foundation, not provider generation, retrieval, persistence, quotas, UI insertion, or an acceptance-criteria closeout.
+
+## 2026-10-27 - Phase 06 accepted Gemini development policy
+
+- User resolved style curatorship, personal-sample consent/revocation, Gemini Flash selection, daily quotas, AI-log retention, saved-output behavior, and the human-reviewed evaluation gate. `docs/DECISIONS.md` records A-027.
+- `src/features/ai/policy.ts` records the versioned synthetic-development policy: `gemini-3.8-flash`, 25 requests per user per UTC day, 250 requests per organization per UTC day, 180-day generation-log retention, and an 80% human-reviewed acceptance gate. It does not make a provider request.
+- `tests/unit/ai-policy.test.ts` verifies the policy values and that either exhausted daily quota rejects a request.
+- `rtk proxy .\\node_modules\\.bin\\vitest.cmd run tests/unit/ai-contracts.test.ts tests/unit/ai-policy.test.ts tests/unit/environment.test.ts tests/unit/gemini-provider.test.ts --pool=forks` - passed: 4 files, 10 tests.
+- `rtk proxy .\\node_modules\\.bin\\prettier.cmd --check docs/DECISIONS.md src/features/ai/contracts.ts src/features/ai/policy.ts tests/unit/ai-contracts.test.ts tests/unit/ai-policy.test.ts` - passed.
+- `rtk proxy npm.cmd run typecheck` - completed with no TypeScript diagnostics. `git diff --check` completed with existing LF-to-CRLF warnings only.
+- O-025 remains open for an AI endpoint rate-limit threshold/provider and audited administrative unblock procedure. Gemini Free remains synthetic/test-only, so no private organization caption, sample, style, or prompt has been transmitted.
+
+## 2026-10-27 - Phase 06 authorized implementation foundation
+
+- User accepted the AI short-window limit: 5 requests per authenticated user per rolling 10-minute window, automatic reset, and no manual unblock. A-027 now records this alongside the daily limits; O-025 remains open only for authentication abuse controls.
+- Added the offline `20261027000100_phase_06_ai_foundation.sql` migration: RLS-protected style profiles/versions, private-or-explicitly-shared curated samples, embedding cache records, non-content generation provenance, feedback, usage windows, and a `reserve_ai_generation_quota` security-definer function. The function authorizes the current writer and atomically reserves the 5/10-minute, 25/user/day, and 250/organization/day limits. The migration has not been applied to any hosted database.
+- Added `src/app/api/ai/generate/route.ts`. It validates the local Zod request contract and re-authorizes editable content access, then returns a generic `503` before provider invocation. This prevents Gemini Free from receiving a private caption brief. `AiAssistancePanel` transparently shows the disabled state in a content record and preserves manual drafting.
+- Added source-level security/route tests and a rendered panel test. `rtk proxy .\\node_modules\\.bin\\vitest.cmd run tests/unit/ai-contracts.test.ts tests/unit/ai-policy.test.ts tests/unit/ai-schema-foundation.test.ts tests/unit/ai-route-security.test.ts tests/unit/ai-assistance-panel.test.tsx tests/unit/environment.test.ts tests/unit/gemini-provider.test.ts --pool=forks` - passed: 7 files, 13 tests.
+- `rtk proxy npm.cmd run typecheck` and `rtk proxy npm.cmd run lint` completed without diagnostics. Targeted Prettier checks passed. `git diff --check` completed with existing LF-to-CRLF warnings only.
+- `rtk proxy npm.cmd run build` compiled successfully and started its TypeScript step, but the runner returned before a completion result; the production build is not recorded as passed.
+- Phase 06 remains open. Hosted migration/RLS tests, real atomic quota proof, profile/sample management UI and trusted mutations, embedding/retrieval implementation, prompt/provenance storage, an approved private-data provider, live Gemini evaluation, and insertion/feedback workflows remain incomplete.
+
+## 2026-10-26 - Phase 05 closeout audit
+
+Phase 05 remains **open**. No acceptance criterion is fully verified.
+
+| Acceptance criterion | Status | Evidence |
+| --- | --- | --- |
+| Two authorized writers concurrently edit with cursors/selections/presence | Not verified | No `RoomProvider`, TipTap editor, presence UI, or two-context browser test exists. |
+| Viewer is read-only; denied users cannot observe | Partially verified | `src/app/api/liveblocks-auth/[projectId]/[contentId]/route.ts` derives current Supabase access and grants write only when `item.canEdit`; no hosted request matrix or revocation test ran. |
+| Anchored comments, mentions/replies, attributable resolution | Not verified | No comment schema, UI, mirror, or test exists. |
+| Attributed suggestions with authorized accept/reject | Partially verified | `src/features/collaboration/suggestions.ts` rejects stale/decided proposals; `tests/unit/collaboration-suggestions.test.ts` has 2 passing utility tests. No attribution, server decision, mirror, or UI exists. |
+| Reconnect/offline behavior follows O-015 | Not verified | No refresh, downgrade, eviction, or reconnect implementation/test exists. |
+| Immutable snapshot handoff | Not verified | No live-document serialization or snapshot comparison evidence exists. |
+| Review lock/new draft behavior and stale approvals | Not verified | No collaboration review-lock integration or test exists. |
+| Durable authorized live workflow/reaction/notification updates | Not verified | No Realtime policy/subscription or notification-center test exists. |
+
+- `rtk proxy npm.cmd run typecheck` completed with no TypeScript diagnostics.
+- `rtk proxy npm.cmd run lint`, `rtk proxy npm.cmd run test`, and `rtk proxy npm.cmd run build` emitted startup only before the runner ended; no completion result is recorded.
+- `rtk proxy npm.cmd run format:check` failed on existing dirty files and `src/features/collaboration/suggestions.ts`; no bulk formatting was performed.
+- `rtk proxy git diff --check` completed with existing LF-to-CRLF warnings only.
+- No hosted Supabase, Liveblocks, or Render request, migration, Realtime subscription, two-session browser test, screenshot/trace, or manual collaboration observation was run.
 
 ## 2026-10-20 — Planning harness
 
@@ -418,4 +508,107 @@ Stop after this offline Phase 03 implementation. The exact next permitted task i
 
 - Docker is unavailable and no hosted database was authorized, so the new SQL migration, RLS policies, initializer, and idempotency behavior are not runtime-proven.
 - After an explicitly authorized isolated hosted-development migration pass, an authorized `publicity_director`, `pro`, or `executive` must call `initialize_launch_publication_destinations` for each organization. The initializer records organization-specific policy rows from the v1 templates without overwriting prior versions.
+
+## 2026-10-25 - Phase 02 identity-provider decision documentation
+
+- Accepted A-021: Google OAuth and Microsoft Azure OAuth are primary; a deliberately disclosed institutional email/password flow is the only fallback. Passwordless email magic links are excluded.
+- Updated the product specification, Phase 02 plan, decisions, and hosted-development guide. Added `notes/instructions/identity-provider-setup.md` with future hosted-development setup and synthetic-verification instructions.
+- No Supabase project, OAuth provider, email provider, secret, credential, database, migration, or application code was configured or changed.
+- Commands and observed results: `rtk proxy .\\node_modules\\.bin\\prettier.cmd --write` over the touched Markdown files completed successfully; `rtk proxy git diff --check` completed with no whitespace errors.
+
+## 2026-10-26 - Phase 02 membership-claim migration syntax correction
+
+- Corrected `public.claim_current_membership()` in `20261024000100_phase_02_auth_membership.sql`. PostgreSQL does not permit two whole-row variables in a multi-item `INTO` target. The locked allowlist/membership join now selects into one `record`, then assigns its named `allowlist` and `membership` fields to the typed row variables.
+- Added a focused static regression assertion that rejects the invalid `into v_allowlist, v_membership` shape and requires the single-record assignments.
+- `rtk .\\node_modules\\.bin\\vitest.cmd run tests/unit/auth-security-boundary.test.ts --reporter=verbose --pool=forks` - exit 0; 1 file and 6 tests passed.
+- `rtk npm.cmd run typecheck` - exit 0; strict TypeScript reported no errors.
+- `rtk proxy git diff --check` - exit 0; no whitespace errors. Prettier formatted the TypeScript test but cannot infer a parser for the SQL migration because this repository has no SQL formatter configured.
+- Database execution remains pending. The migration failed before it could be applied, and no Docker or hosted database command was run during this correction.
+
+## 2026-10-26 - Phase 03 special-case metadata migration correction
+
+- Corrected `public.update_content_metadata()` in `20261025000100_phase_03_projects_content.sql`. The normalized special-case reason is now computed once in `v_special_case_reason` before the update and reused for the audit comparison, avoiding an inline `CASE` expression at the reported parser location.
+- Added a static regression assertion for the declared, normalized, stored, and compared special-case reason.
+- `rtk .\\node_modules\\.bin\\vitest.cmd run tests/unit/projects-security-boundary.test.ts --reporter=verbose --pool=forks` - exit 0; 1 file and 7 tests passed.
+- `rtk npm.cmd run typecheck` - exit 0; strict TypeScript reported no errors.
+- `rtk proxy git diff --check` - exit 0; no whitespace errors. The repository has no configured SQL formatter, so the SQL migration was not auto-formatted.
+- No local or hosted database command was run. The exact migration application/RLS behavior remains pending an authorized hosted-development run.
+
+## 2026-10-26 - Phase 04 entry-gate review and workflow decisions
+
+- Recorded A-022: Publicity Director review is mandatory for every standard caption. Recorded A-023: changing only scheduled publication time does not invalidate approval; every other metadata exception remains undecided. Recorded A-024: durable in-app notifications are the MVP channel; external email delivery is deferred.
+- Added `notes/instructions/email-notification-provider-setup.md` with later provider, sender-domain, server-secret, delivery, webhook, and synthetic-verification guidance. No provider was selected or configured.
+- Phase 04 implementation did not begin. `harness/build/phase-04-approval-workflow.md` requires immutable caption versions and verified Phase 02/03 database/RLS behavior; neither exists yet. O-004 also remains open because the requested President-only option has no defined CapItUp role/assignment representation and Junior-Officer unanimity lacks a frozen eligible population rule.
+
+## 2026-10-26 - PRO-authored caption approval clarification
+
+- Recorded A-025: a PRO author cannot self-approve; a frozen workflow selects Publicity Director only, explicitly designated executive President only, or unanimous active Junior Officers. Suspended, expired, and resigned snapshot Junior Officers do not block unanimity.
+- O-004 remains partially open: designation grant/revocation authority and a safe mechanism for a temporarily unavailable but still-active Junior Officer are unspecified. Phase 04 implementation remains blocked by that decision and by absent immutable caption versions and hosted Phase 02/03 verification.
+
+## 2026-10-26 — Phase 04 context-reset handoff
+
+- `rtk proxy powershell.exe -NoProfile -Command "Get-Content ... AGENTS.md; PLANS.md; harness/build/phase-04-approval-workflow.md"` — exit 0; inspected the applicable instructions, roadmap, and Phase 04 acceptance criteria.
+- `rtk proxy powershell.exe -NoProfile -Command "Get-Content ... harness/HANDOFF.md; harness/build-log.md; git status --short; git diff --stat; git diff --name-only"` — exit 0; inspected the existing handoff/log and current dirty working tree.
+- `rtk proxy powershell.exe -NoProfile -Command "Get-Content ... 20261026000100_caption_versions_prerequisite.sql; 20261026000200_phase_04_workflows.sql"` — exit 0; inspected both new, unapplied migrations.
+- `rtk proxy powershell.exe -NoProfile -Command "git diff -- ...; Get-Content ... caption-version-prerequisite.test.ts; workflow-prerequisite.test.ts; package.json"` — exit 0; inspected partial code/test diffs and available scripts.
+- `rtk proxy git diff --check` — exit 0; no whitespace errors. Git emitted existing LF-to-CRLF working-copy warnings only.
+- No feature command, migration, Docker command, hosted Supabase command, deployment, commit, or push was performed for this handoff.
+
+## 2026-10-26 - Phase 04 workflow transition continuation
+
+- Added forward-only, unapplied migrations `20261026000300_phase_04_workflow_transitions.sql`, `20261026000400_phase_04_overrides_notifications.sql`, and `20261026000500_phase_04_unanimity_and_notifications.sql` for frozen eligibility snapshots, transactional decisions, changes requests, Director overrides, durable in-app notifications, template administration, and unanimous Junior-Officer decisions.
+- Passed: focused static migration tests (2 files, 3 tests), strict TypeScript, ESLint, the full Vitest suite (14 files, 74 tests), and `git diff --check`.
+- `format:check` failed on pre-existing unformatted uncommitted files, including unrelated `notes/blocks.md`; no bulk formatting was performed. An earlier parallel lint/Vitest attempt returned without completion evidence; both were rerun individually and passed.
+- Docker remains intentionally unavailable. No database, Supabase, deployment, or production operation occurred. Hosted Supabase must apply `20261026000100` through `20261026000500`, then run PostgreSQL/RLS/concurrency and authenticated browser workflow checks before Phase 04 can close.
+
+## 2026-10-26 - Phase 05 collaboration implementation started
+
+- User selected managed Liveblocks as the primary collaboration provider and Render/Hocuspocus as a non-local fallback. The paid Tiptap tracked-changes extension was rejected; A-026 selects a first-party, stale-safe suggestion-record model instead.
+- Added the server-side Liveblocks room-authority route. It derives the authenticated member and content access from Supabase, grants one organization-scoped content room only, and issues read access unless the existing trusted content policy grants editing.
+- Added the pure suggestion-application primitive and focused regression tests. It applies only an intact open proposal and rejects stale or already-decided proposals.
+- Installed open-source Liveblocks, Tiptap, and Yjs dependencies. No secret value was read, printed, or changed, and no hosted service, migration, or deployment was modified.
+- `rtk proxy npm.cmd run typecheck` - passed after the route's explicit dynamic-params correction.
+- `rtk proxy npm.cmd run test -- collaboration-suggestions` - passed: 1 file and 2 tests.
+- Phase 05 is not complete. Supabase collaboration mirror migrations/RLS, editor/presence/comment UI, server-authorized suggestion decisions, notification delivery, reconnect/revocation behavior, and two-session hosted verification remain pending.
+
+## 2026-11-15 - Phase 05 server-only finalization and app-wide notifications
+
+- Added the unapplied `20261026000800_phase_05_server_snapshot_notifications.sql` forward migration and removed the authenticated grant from the fresh Phase 05 migration path.
+- Added a server-only Supabase service-role client used solely by the collaboration snapshot route after normal cookie-session authorization and exact Liveblocks snapshot decoding.
+- Added immutable word/grapheme/destination policy evidence and warning presentation, with all evaluated limits resolved from versioned database policy rows.
+- Added an RLS-backed app-wide notification center with unread count, recipient-filtered Realtime changes, and recipient-scoped mark-read behavior.
+- Added focused negative authorization/forgery/stale/replay/policy and notification-state boundary tests.
+- Early `rtk npm run typecheck` found one Realtime payload narrowing error; it was corrected before final verification. No migration or external service command was run.
+- Focused verification passed: 6 files / 37 tests, then the post-rename security subset passed again: 4 files / 14 tests.
+- Full verification passed: 27 files / 107 tests, ESLint, strict TypeScript, `git diff --check`, and a synthetic-environment Next.js production build covering all routes.
+- Repository-wide `format:check` remains non-zero only for pre-existing user files `notes/blocks.md` and `src/features/projects/actions.ts`; the files changed for this slice were formatted directly.
+- `rtk npx supabase status` could not inspect a local database because Docker and Podman are absent. No SQL migration, PostgreSQL/RLS/Realtime test, hosted service call, deployment, or production write ran.
+- A first production-bundle scan found the service-role environment variable name in a client chunk because public and server schemas shared one module; no service-role value was present. The schemas were separated, environment/security tests passed, the production build passed again, and a final `.next/static` scan found neither `SUPABASE_SERVICE_ROLE_KEY` nor the synthetic service-role value.
+
+## 2026-11-15 - Phase 06 AI assistance offline implementation
+
+### Completed local implementation
+
+- Added `20261115000100_phase_06_ai_operations.sql`, a forward-only companion to the existing unapplied Phase 06 foundation. It adds immutable AI audit events; authorized style-profile creation, versioning, and activation; database-side vector retrieval that filters organization, project, curation, revocation, and personal-sharing scope before ranking; generation provenance/final-disposition records; and authenticated-only grants. The original atomic quota reservation function remains in `20261027000100_phase_06_ai_foundation.sql`.
+- Added server-only prompt, retrieval, Gemini-adapter, evaluation, and profile-list modules. Prompts label briefs and examples as untrusted data; provider JSON is parsed through the structured contract; provider failures become a generic unavailable error; and the adapter remains unreachable for private captions under A-027's synthetic-development-only Gemini boundary.
+- Added an AI result surface that identifies generated content, shows profile/example influence and assumptions/warnings, and exposes only editable-draft or suggestion callbacks. It contains no submission, approval, or publication action. The content page now exposes RLS-filtered active profile labels in the unavailable AI panel.
+- Added mocked unit/integration/evaluation coverage for malformed output, prompt-injection data isolation, allowed and denied retrieval candidates, revoked consent, provider timeout, editable-only insertion, evaluation dimensions/threshold, and database-boundary retrieval/provenance shape. `test:integration` and `test:eval` are now defined scripts.
+
+### Commands actually executed and observed results
+
+- `rtk npm.cmd run test -- ai contracts policy prompt retrieval evaluation gemini assistance schema route` - passed: 16 files, 51 tests.
+- `rtk npm.cmd run test:integration -- ai-authorization` - passed: 1 file, 1 static trusted-boundary test.
+- `rtk npm.cmd run test:eval -- ai-fixtures` - passed: 1 file, 1 synthetic evaluation-fixture test.
+- `rtk npm.cmd run typecheck` - passed after the Phase 06 changes.
+- `rtk npm.cmd run lint` - passed after the Phase 06 changes.
+- `rtk npm.cmd run test` - passed: 31 files, 113 tests. A prior `rtk npm.cmd run test && rtk npm.cmd run build` also proceeded into and completed the production build, which listed all application routes.
+- `rtk npm.cmd run test:e2e` - passed: 5 Chromium tests. These are the existing foundation browser tests; there is no provider-enabled AI browser scenario because private-caption generation is intentionally unavailable.
+- `rtk git diff --check` - passed with no whitespace errors.
+
+### Remaining verification and external boundary
+
+- Docker was not used. No hosted Supabase project, migration, provider call, credential, deployment, production write, commit, or push occurred.
+- The new migration is unapplied and needs a separately authorized hosted-development application followed by PostgreSQL/RLS tests for allowed, denied, cross-organization, revoked-personal-sample, vector-isolation, and concurrent quota behavior.
+- Gemini Free remains synthetic/test-only. No private caption, style rule, example, or brief was sent to Gemini. A privacy-approved provider policy plus a human-reviewed evaluation report meeting A-027's 80% threshold are required before enabling private-caption generation.
+- Repository-wide `format:check` still reports pre-existing unrelated unformatted files, including `notes/blocks.md` and `src/features/projects/actions.ts`. The Phase 06 files were formatted directly.
 

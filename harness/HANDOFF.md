@@ -1,9 +1,76 @@
 # CapItUp Development Handoff
 
-Last updated: 2026-10-25 +08:00
+## Latest update - 2026-11-15 Phase 07 Notion integration offline implementation
+
+- Phase 07 is locally implemented but not hosted-verified or complete. The new forward-only, unapplied migration is `supabase/migrations/20261115000200_phase_07_notion_integration.sql`; its pending hosted pgTAP/RLS proof is `supabase/tests/notion_integration_rls.test.sql` (10 assertions). Do not edit or reapply any recorded earlier migration.
+- The local slice provides one organization-managed internal Notion connection, server-only token access, raw-body HMAC signature/freshness verification, event-ID idempotency, canonical post-webhook page fetch, safe three-field import mapping, source-of-truth enforcement, deterministic 1/5/15/60-minute backoff, conflicts, dead letters, audited admin recovery, and a visible admin setup/status/recovery page. Working captions and versions cannot be mapped or exported.
+- Because O-019/O-020/O-021 are unresolved, the UI/configuration deliberately permits only title, event date, and deadline imports from an explicitly shared development data source. No app-owned export and no final-caption export is activated or represented. This is a safety boundary, not a decision resolution.
+- Observed local gates: 123 unit tests, 5 integration tests, lint, strict TypeScript, targeted Prettier, synthetic production build stages, and six Chromium tests passed; `format:check` remains blocked by four unrelated dirty files recorded in `harness/build-log.md`. No hosted Supabase/Notion access, migration application, Docker/local stack, deployment, production operation, commit, or push occurred.
+
+Last updated: 2026-11-15 +08:00
 Current branch: master
-Current phase: User-directed Phase 03 is offline-implemented; hosted database verification is pending
-Current task: Stop before the collaborative editor, caption versions, workflow, or Phase 04.
+Current phase: Phase 07 Notion integration is offline-implemented, awaiting external decisions and hosted-development proof
+Current task: In an explicitly authorized isolated hosted development project, inspect the migration ledger and apply only missing forward migrations, including `20261115000200_phase_07_notion_integration.sql`; then run its pgTAP suite and authorized signed-webhook/idempotency/retry/recovery checks against explicitly shared development content. Do not use production, deploy, or reapply recorded migrations.
+
+## Latest update - 2026-11-15 Phase 06 AI assistance offline implementation
+
+- Phase 06 has an offline-implemented, synthetic-only AI boundary. `20261115000100_phase_06_ai_operations.sql` complements the existing Phase 06 foundation with authorized profile lifecycle operations, filtered vector retrieval, provenance/disposition/audit records, and authenticated grants. It is forward-only and unapplied.
+- `src/features/ai/` now has server-only prompt/retrieval/provider/evaluation modules and a display-only profile selector plus editable-draft/suggestion result component. The route continues to authorize content access and return a generic `503` before any private data reaches Gemini; this is required by A-027, not a degraded authorization path.
+- Local unit, static integration, synthetic evaluation, type, lint, production build, and existing browser gates passed. The browser suite has no provider-enabled AI scenario; no hosted SQL/RLS/vector/quota concurrency run has occurred.
+- Phase 06 is **not hosted-verified or complete**. Its exact external continuation is: inspect the hosted development migration ledger, apply only missing forward migrations (including `20261115000100_phase_06_ai_operations.sql`), then run synthetic allowed/denied/cross-organization/revoked-consent/vector-isolation/quota-concurrency tests. Do not send private content to Gemini Free or deploy.
+
+Last updated: 2026-11-15 +08:00
+Current branch: master
+Current phase: Phase 06 AI assistance is offline-implemented and synthetic-only; hosted database/provider verification remains open
+Current task: Apply and verify only the Phase 06 forward migrations in an explicitly authorized hosted-development environment, without production access or private-caption provider use.
+
+## Prior update - 2026-11-15 Phase 05 server-only finalization and notifications
+
+- Added unapplied forward migration `20261026000800_phase_05_server_snapshot_notifications.sql`. It revokes/drops the obsolete authenticated snapshot RPC, adds versioned word-policy storage and immutable word/destination evidence, and grants the replacement finalization function only to `service_role`.
+- The snapshot route now authenticates with the normal Supabase cookie client, verifies write capability and current writer assignment, freezes and validates the exact Liveblocks Yjs version, computes shared word/grapheme counts, and invokes the isolated server-only service-role client. The database function revalidates actor, organization, project, assignment, room, workflow, item/document revisions, and replay state under locks.
+- Added an app-wide notification center to dashboard and project workspaces. It reads recipient-only RLS rows, maintains unread state, subscribes to recipient-filtered Realtime changes, and marks read via the existing recipient-scoped RPC.
+- Review UI now presents immutable count, policy-version, limit, exemption, destination, and warning evidence. Warnings do not block submission or invent a publication rule.
+- No migration, hosted SQL, deployment, production write, commit, or push occurred. PostgreSQL/RLS/Realtime/Liveblocks behavior still requires an authorized isolated environment.
+
+## Phase 05 managed-Liveblocks implementation - 2026-11-08
+
+A-028 is now implemented locally as an unapplied forward migration and application slice. Managed Liveblocks is the only collaboration provider. The server derives one organization/content room from trusted data and issues least-privilege access after the Supabase RPC authorizes a four-hour maximum CapItUp lease. The client revalidates at least every minute, on reconnect/online/visibility events, and after session Realtime events; it reloads for a read/write change and disconnects after revocation or revalidation failure. Offline Liveblocks support is disabled.
+
+`20261026000700_phase_05_collaboration.sql` adds RLS-protected collaboration documents/sessions, durable threads/comments/mentions/suggestions/reactions/audit events, revocation triggers, trusted mutations, exact snapshot submission, and Supabase Realtime publication entries. Durable anchors include encoded Yjs-relative positions. `src/features/collaboration/` now contains the TipTap/Yjs workspace, presence/status, comments/replies/resolution, mentions, custom stale-safe suggestions, advisory reactions, workflow status, current-caption notifications, access revalidation, and snapshot serialization. The content page uses this workspace instead of the old manual textarea submission path.
+
+Snapshot submission asks Liveblocks to freeze a version-history snapshot, retrieves that exact Yjs version, validates/serializes it, hashes the editor JSON, and atomically creates the immutable Supabase caption version and workflow instance. Formal approval continues to target the immutable version. The local OpenAPI source is `docs/api/collaboration.openapi.json`; no credential value is stored or printed.
+
+Observed local evidence so far: focused collaboration Vitest passes 4 files / 15 tests; focused ESLint passes; focused Prettier passes; TypeScript passes. Broader tests/build and final diff checks must be rerun after the final documentation pass. The migration has not been applied or runtime-tested against PostgreSQL, no two-browser/provider scenario has run, and no hosted or production operation occurred. The operator will need to apply the unapplied SQL migration to the hosted development project exactly once before browser verification; do not reapply any migration already recorded there.
+
+Exact next task: finish broad local gates, then—only with explicit hosted-development authorization—inspect the remote migration ledger, apply only missing Phase 04/05 migrations, and run allowed/denied/cross-organization RLS plus two-session Liveblocks, revocation, relative-anchor, reaction, notification, and snapshot-handoff browser tests.
+
+## Phase 04 approval-invalidation policy - 2026-11-06
+
+A-023 now fully resolves O-005. Scheduled publication time is the only approval-preserving edit. The new, unapplied `20261026000600_phase_04_approval_invalidation.sql` migration reopens the current workflow for caption, title, kind, tag, destination, deliverable, content-assignment, special-case, or evaluated-policy changes while preserving immutable historical decisions and audit evidence. It adds scheduled-publication storage and a trusted non-invalidating update RPC, approval-policy fingerprints, centralized invalidation/audit/notification behavior, and triggers for existing trusted mutation paths.
+
+Focused Phase 04 tests passed (3 files, 6 tests), the full Vitest suite passed (22 files, 88 tests), Prettier, ESLint, and strict TypeScript passed, and a synthetic-environment production build exited 0. No PostgreSQL migration or hosted operation ran. If the earlier Phase 04 files remain unapplied as recorded, hosted development must apply `20261026000100` through `20261026000600` in order; if remote migration history proves that `00100` through `00500` are already applied, apply only `00600`. Never reapply the recorded Phase 02/03 migrations.
+
+Phase 04 remains open pending hosted migration/RLS/concurrency proof, complete draft/version read state, workflow queues/timeline/forms, and authenticated browser scenarios.
+
+## Phase 06 Gemini synthetic-development start - 2026-10-26
+
+The user later authorized starting Phase 06 despite open Phase 04/05 gates. Gemini Free is authorized for synthetic/test content only; never transmit private organization captions. `GEMINI_API_KEY` is server-only and the initial `src/features/ai/gemini.ts` factory makes no provider call. `src/features/ai/contracts.ts` validates confirmed briefs and untrusted structured model output, including exactly three directions; `src/features/ai/policy.ts` records the accepted 2026-10-27 policy. A-027 resolves O-016, O-017, O-018, the AI-log portion of O-023, and the AI portion of O-025. The offline Phase 06 migration provides RLS tables and an atomic quota reservation function, while `/api/ai/generate` re-authorizes content access and intentionally returns `503` before Gemini receives any private text. Phase 06 is not complete: hosted migration/RLS proof, profile/sample mutation UI, embedding/retrieval, generation/provenance persistence, insertion/feedback, and evaluation remain outstanding.
+
+## Phase 05 closeout audit - 2026-10-26
+
+This later audit supersedes the historical instruction above only for status reporting. Phase 05 is **open**: no acceptance criterion is fully verified. The room-authorization route and stale-suggestion utility are partial/static evidence only. Editor/presence/comments, Supabase mirrors/RLS, Realtime notifications, reconnect/revocation, snapshot handoff, review lock, and two-session proof remain incomplete. See `harness/build-log.md` for the criterion matrix and observed command results.
+
+## 2026-10-26 Phase 05 continuation
+
+The later user authorization supersedes the historical instruction above: Phase 05 implementation has started, with Liveblocks as the primary provider and Render/Hocuspocus as a fallback. The custom suggestion model is accepted in A-026; do not add Tiptap Pro Tracked Changes.
+
+Completed in the first Phase 05 slice:
+
+- Open-source Liveblocks, Tiptap, and Yjs dependencies are installed.
+- `src/app/api/liveblocks-auth/[projectId]/[contentId]/route.ts` performs server-authorized, least-privilege room token issuance from the current Supabase session and content access.
+- `src/features/collaboration/suggestions.ts` refuses stale or already-decided suggestion application; `tests/unit/collaboration-suggestions.test.ts` covers the positive and stale/decided paths.
+
+Do not call this phase complete. The next work is the collaboration mirror schema/RLS and trusted suggestion-decision operations, then the editor/presence/comment UI and approved two-session hosted verification. No migration, hosted database write, deployment, or production operation has occurred in this slice.
 
 ## Current Phase 03 handoff
 
@@ -279,7 +346,7 @@ The workspace routes still render Phase 01 fixture content after authorization. 
 
 ## Manual configuration still required
 
-1. Resolve O-001, O-002, O-006, O-023, and O-025.
+1. Resolve O-002, O-006, O-023, and O-025; A-021 already resolves the provider/fallback choice.
 2. With separate authorization, choose an isolated hosted Supabase development project and place only its public URL/key in `.env.local`; do not expose a service-role key.
 3. Review and apply the migration, configure the Before User Created hook and exact redirect URLs, configure the approved provider/domain/rate-limit/CAPTCHA controls, and bootstrap the first administrator through a reviewed one-time procedure.
 4. Compare generated database types with `src/types/database.ts`, then run the pending database/RLS tests using synthetic data only.
@@ -295,6 +362,35 @@ The workspace routes still render Phase 01 fixture content after authorization. 
 ## Exact next permitted task
 
 Review the offline Phase 02 changes and resolve the hosted identity/security configuration choices. Do not connect or mutate a hosted project without a new explicit authorization. Do not begin Phase 03, projects, captions, approval workflows, realtime, AI, Notion, or deployment.
+
+## Latest update - 2026-10-25 Phase 02 identity providers
+
+- A-021 resolves O-001: Google OAuth and Microsoft Azure OAuth are primary. The only accepted fallback is institutional email/password behind a deliberate lower-page disclosure; passwordless email magic links are excluded.
+- `notes/instructions/identity-provider-setup.md` documents the later hosted-development configuration and synthetic test checklist. No provider console, Supabase project, secret, credential, remote database, migration, or source-code login change was made.
+- O-002 and O-025 remain blockers for enabling any sign-in method. The current email-link implementation must be replaced before hosted authentication is enabled.
+
+## Latest update - 2026-10-26 Phase 02 migration syntax correction
+
+- Fixed the PostgreSQL `record variable cannot be part of multiple-item INTO list` error in `public.claim_current_membership()`. The existing joined-row lock remains intact; the function now selects one record and assigns its named allowlist and membership fields afterward.
+- Added a static regression test. Focused Vitest passed (1 file, 6 tests) and `git diff --check` passed.
+- The migration still needs an authorized hosted-development retry and database/RLS test run. No remote database was changed by this local correction.
+
+## Latest update - 2026-10-26 Phase 03 special-case migration correction
+
+- Reworked the inline special-case-reason `CASE` in `public.update_content_metadata()` into one normalized local variable used by both the update and audit comparison. This addresses the SQL-editor parser error reported at the former inline expression.
+- Focused Phase 03 migration-boundary tests passed (1 file, 7 tests), strict TypeScript passed, and `git diff --check` passed.
+- No local or hosted database command was run. Before retrying, apply the complete corrected migration rather than a highlighted fragment; if the prior SQL Editor run partially applied earlier statements, inspect the existing schema before rerunning it.
+
+## Latest update - 2026-10-26 Phase 04 entry gate
+
+- Accepted A-022: mandatory Publicity Director review for standard captions; A-023: scheduled publication-time changes do not invalidate approval; and A-024: in-app notifications are the MVP channel. The future email-provider setup guide is `notes/instructions/email-notification-provider-setup.md`.
+- Phase 04 remains blocked before implementation. The active Phase 04 plan requires immutable caption versions plus hosted Phase 02/03 migration, RLS, and authorization verification. The repository deliberately lacks immutable caption versions because the narrower Phase 03 slice excluded caption drafting/version history.
+- O-004 remains unresolved: President is not an approved organization role or project assignment, and the requested unanimous-Junior-Officer alternative needs a frozen eligible-person snapshot and a definition of what happens when a person is unavailable. Do not map either one silently to `executive` or another role.
+
+## Latest update - 2026-10-26 PRO-authored approval clarification
+
+- A-025 records the selected independent approval alternatives: Publicity Director only, explicitly designated executive President only, or unanimous active Junior Officers. The workflow freezes its selected alternative and Junior-Officer roster; suspended, expired, and resigned snapshot members are ignored.
+- Remaining O-004 input: who may grant/revoke the President designation, and what audited mechanism may excuse a temporarily unavailable but still-active Junior Officer. Neither may be inferred from a display title or silently mapped to another role.
 
 ## Latest update — 2026-10-25 O-029 word-count utility
 
@@ -322,3 +418,112 @@ Review the offline Phase 02 changes and resolve the hosted identity/security con
 - Added a shared destination character validator. It counts all visible graphemes—including hashtags, mentions, URLs, punctuation, whitespace, and emoji—and reports only the selected destination(s) that exceed their configured limit.
 - Focused tests passed (6); full Vitest passed (12 files/68 tests); type checking and lint completed without errors. The O-009 build rerun compiled successfully but lacks final runner exit evidence and remains unverified for this change.
 - Database/RLS/initializer behavior remains pending an explicitly authorized hosted development verification pass. No Docker, hosted project, credentials, deployment, commit, or push was used.
+
+## Context-reset handoff — 2026-10-26 Phase 04 partial implementation
+
+### 1. Current phase and objective
+
+Phase 04 — Approval workflow — is active and **not complete**. Its objective is configurable, frozen, version-bound approval workflows with change-request loops, PRO final approval, distinct audited Publicity Director overrides, durable in-app notifications, an actionable review queue, and a timeline. A narrow Phase 03 caption-version prerequisite was started because Phase 04 decisions must refer to immutable submitted versions.
+
+### 2. Completed Phase 04 acceptance criteria
+
+None are verified end to end. The working tree contains initial schema scaffolding and static tests only; no hosted database execution, authorization matrix, transition, UI workflow, or browser workflow acceptance criterion has been demonstrated.
+
+### 3. Partially implemented acceptance criteria
+
+- **Version-bound workflow records:** Partial. `workflow_instances.caption_version_id` references `caption_versions`, and caption-version tables/functions were drafted. They have not run against PostgreSQL.
+- **Trusted draft and submission boundary:** Partial. Draft/save and immutable-submit RPC definitions, server actions, schemas, and a basic page form exist. The page hard-codes optimistic versions (`0`/`1`), always starts with an empty textarea, and does not display or load a draft/history; it cannot reliably support later saves or submissions.
+- **RLS/direct-write restriction:** Partial/static only. Both new migrations enable RLS and revoke direct table writes, but no database policy test has executed.
+- **Notification read state:** Partial. `workflow_notifications` and `mark_notification_read` exist in the migration, but no code creates workflow notifications or presents a notification UI.
+- **President and Junior-Officer availability storage:** Partial. Tables exist, but there are no server-only grant/revoke or availability operations, authority checks, audits, or workflow-roster use.
+
+### 4. Acceptance criteria not yet started or not implemented
+
+- End-to-end standard writer submission → Director review → PRO final approval.
+- Configured project-led workflow with only matching assigned heads authorized.
+- Frozen template-step copy at submission and protection from later template edits.
+- Atomic approve / request-changes / resubmit transitions, current-blocker calculation, status/step separation, concurrency and stale-decision rejection.
+- New-version invalidation/reopen policy, including the approved scheduled-time metadata exception.
+- PRO-author separation of duties and configured terminal-role checks.
+- Director override authorization, mandatory reason, audit event, distinct presentation, and PRO notification.
+- Immutable audit-event creation and full notification creation/read-state behavior.
+- Review queues, timeline, decision forms, changes-requested loop, override UI, loading/empty/error/unauthorized states.
+- Positive/negative authorization, transition, regression, database/RLS, and browser workflow tests required by the phase plan.
+
+### 5. Phase 04 and prerequisite files in the current working tree
+
+| File | Purpose / current state |
+| --- | --- |
+| `supabase/migrations/20261026000100_caption_versions_prerequisite.sql` | New, untracked Phase 03 prerequisite migration for mutable drafts and immutable submitted caption snapshots; not applied or runtime-tested. |
+| `supabase/migrations/20261026000200_phase_04_workflows.sql` | New, untracked initial Phase 04 workflow schema/RLS scaffold; lacks template administration and transition functions; not applied or runtime-tested. |
+| `src/features/projects/schemas.ts` | Adds input schemas for draft saving and snapshot submission. |
+| `src/features/projects/actions.ts` | Adds server actions that validate form data, call the data layer, and redirect generically on error. |
+| `src/features/projects/data.ts` | Adds RPC calls for draft save and version submit; uses `as never` because database types do not yet declare the new RPCs. |
+| `src/app/projects/[projectId]/content/[contentId]/page.tsx` | Adds an early, incomplete caption-draft/submit form for editors. |
+| `tests/unit/projects-schemas.test.ts` | Adds basic validation coverage for optimistic draft-version inputs. |
+| `tests/unit/caption-version-prerequisite.test.ts` | New static migration-shape test only. |
+| `tests/unit/workflow-prerequisite.test.ts` | New static workflow-migration-shape test only. |
+| `harness/HANDOFF.md` and `harness/build-log.md` | This context-reset record and observed-command log. |
+
+Other modified files in `git status` predate or are unrelated to this partial Phase 04 slice; preserve them. In particular, the tracked Phase 02/03 migrations contain separate SQL parser corrections and are not new Phase 04 migrations.
+
+### 6. Migration state
+
+- **User-reported already applied to hosted Supabase; not independently verified in this handoff:** `20261024000100_phase_02_auth_membership.sql` and `20261025000100_phase_03_projects_content.sql`.
+- **New local migrations, not applied or verified:** `20261026000100_caption_versions_prerequisite.sql` and `20261026000200_phase_04_workflows.sql`.
+- No migration was run, linked, reset, or applied during this partial Phase 04 work. Docker is intentionally unavailable and no local Supabase container command was used.
+
+### 7. Current implementation inventory
+
+- **Server actions and authorization:** Draft/save and submit actions validate UUID/version/body inputs and invoke server-only project data functions. The SQL RPCs call existing `private.can_edit_content`; no workflow transition authorization exists. Generic redirects currently collapse all action errors to `/access-denied`, including stale-version errors.
+- **Workflow transitions:** None. The migration has status enums/tables but no function to instantiate frozen steps, decide a step, request changes, resubmit, calculate a current step, invalidate approval, or reject a stale decision atomically.
+- **Audit events:** `workflow_decisions` is a prospective table only. It is not written by any transition and is not a complete immutable audit-event mechanism.
+- **Notifications:** Prospective notification records and a recipient-only `mark_notification_read` RPC exist. There is no notification producer, recipient authorization test, queue, timeline, or UI.
+- **Queues/timeline/UI:** No review queue or workflow timeline exists. The only new UI is the incomplete draft/submission form described above.
+- **President/Junior Officer rules:** Storage tables exist but no server-only owner/director grant/revoke logic, availability action, required-reason enforcement at the operation boundary, or frozen unanimous roster implementation exists.
+
+### 8. Commands and tests actually executed
+
+- `rtk .\\node_modules\\.bin\\vitest.cmd run tests/unit/projects-schemas.test.ts --pool=forks` — exit 0; 1 file, 8 tests passed.
+- `rtk .\\node_modules\\.bin\\vitest.cmd run tests/unit/workflow-prerequisite.test.ts --pool=forks` — exit 0; 1 file, 1 test passed. This is a static SQL-shape check, not a database/RLS test.
+- `rtk npm.cmd run typecheck` — exit 0 after the caption-version action/schema changes.
+- An earlier invocation of `rtk .\\node_modules\\.bin\\vitest.cmd run tests/unit/caption-version-prerequisite.test.ts --pool=forks` emitted only Vitest startup before the command runner returned; no pass/fail result was observed.
+- An attempted chained `rtk npm.cmd run lint; rtk npm.cmd run test; rtk npm.cmd run build` emitted only the start of `lint`; no completion result was observed for any command in that chain.
+
+### 9. Checks not executed or not verified for this partial work
+
+- No final `format:check`, lint, full unit suite, production build, or browser/E2E workflow run completed after the partial Phase 04 changes.
+- No PostgreSQL execution, hosted Supabase migration application, generated-type comparison, RLS test, auth/membership test, transition test, concurrency test, or manual authenticated UI test ran.
+- No Docker, `supabase start`, `supabase stop`, or local reset command ran.
+
+### 10. Known incomplete code and risks
+
+- The new tables and RPCs are absent from `src/types/database.ts`; `data.ts` suppresses this gap with `as never`. Replace that workaround with reviewed types after the schema is settled.
+- The page’s fixed `expectedVersion="0"` and `expectedDraftVersion="1"` make the UI stale after the first save/submit. It neither fetches draft state nor shows immutable version history.
+- Submitted versions do not create workflow instances, audits, or notifications. Approval invalidation/reopen behavior is absent.
+- The workflow schema is only a scaffold: template administration, frozen-step copying, decision authorization, role/assignment checks, President designation governance, Junior-Officer roster freezing, atomic transitions, audit immutability, and notification creation are absent.
+- `workflow_notifications.kind` omits plan-required assignment, deadline, and override categories.
+- The handcrafted migration needs PostgreSQL review before application; static string tests cannot prove its constraints, RLS, or function behavior.
+
+### 11. Exact next implementation task
+
+Continue the authorized Phase 03 caption-version prerequisite and Phase 04 workflow implementation without beginning Phase 05: first complete the persisted caption draft/version read model and type definitions, then add one forward-only workflow transition design that atomically freezes template steps for a submitted version and enforces the current step. Do not apply either new migration without separately authorized hosted-development execution.
+
+### 12. Recommended remaining implementation order
+
+1. Review the two unapplied migrations together; complete caption draft/version retrieval, safe database types, and page state/history before relying on the submit UI.
+2. Add forward-only workflow schema/functions for templates, frozen eligibility snapshots, and atomic instance creation at version submission.
+3. Implement one centralized transaction/RPC for authorize-and-decide (approve/request changes/resubmit), stale/version checks, status progression, immutable audit events, and durable notifications.
+4. Add server-only President designation and Junior-Officer availability actions with the accepted authority/reason/audit rules; use frozen eligible rosters for unanimity.
+5. Implement Director override distinctly, including reason, audit, PRO notification, and presentation.
+6. Add server data access, validated actions, queues, timeline, decision forms, and complete loading/empty/error/denied states.
+7. Add unit, static, database/RLS, transition/concurrency, and browser workflow tests; run the repository checks and only then update Phase status.
+
+### 13. Genuine external blockers
+
+- Runtime migration/RLS/authorization proof requires an authorized hosted Supabase development database session. The two new migration files are not applied. Docker is intentionally unavailable, so local container verification is unavailable.
+- There is no blocker to the remaining local code/design work. No production operation, credential, deployment, commit, or Phase 05 work is authorized.
+
+### Stop condition for this handoff
+
+Stop here. Phase 04 is not complete, and no new feature implementation was performed after this handoff record.

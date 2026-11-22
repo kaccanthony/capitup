@@ -40,6 +40,25 @@ export type ProjectAssignmentRole =
 
 export type ContentResponsibility = "writer" | "reviewer";
 
+export type CollaborationAccessMode = "read" | "write";
+export type CollaborationSuggestionKind = "insert" | "delete" | "replace";
+export type CollaborationSuggestionState =
+  "open" | "accepted" | "rejected" | "stale";
+export type CaptionReactionKind = "looks_ready" | "needs_refinement";
+export type CaptionPolicyWarningState =
+  | "within_recommendation"
+  | "approaching_recommendation"
+  | "over_recommendation"
+  | "over_hard_maximum"
+  | "over_platform_maximum"
+  | "unconfigured";
+export type WorkflowInstanceStatus =
+  "in_review" | "changes_requested" | "approved";
+export type WorkflowStepStatus =
+  "pending" | "approved" | "changes_requested" | "skipped";
+export type WorkflowStepKind =
+  "publicity_director" | "pro" | "president" | "junior_officer_unanimous";
+
 export type DestinationLimitClassification =
   | "platform_based"
   | "organization_defined_destination"
@@ -367,6 +386,8 @@ export type Database = {
           organization_id: string;
           title: string;
           description: string | null;
+          notion_event_starts_at: string | null;
+          notion_deadline_at: string | null;
           created_by_user_id: string;
           record_version: number;
           created_at: string;
@@ -377,6 +398,8 @@ export type Database = {
           organization_id: string;
           title: string;
           description?: string | null;
+          notion_event_starts_at?: string | null;
+          notion_deadline_at?: string | null;
           created_by_user_id: string;
           record_version?: number;
           created_at?: string;
@@ -429,6 +452,8 @@ export type Database = {
           status: ContentStatus;
           is_special_case: boolean;
           special_case_reason: string | null;
+          scheduled_publication_at: string | null;
+          approval_policy_fingerprint: string | null;
           created_by_user_id: string;
           record_version: number;
           created_at: string;
@@ -443,6 +468,8 @@ export type Database = {
           status?: ContentStatus;
           is_special_case?: boolean;
           special_case_reason?: string | null;
+          scheduled_publication_at?: string | null;
+          approval_policy_fingerprint?: string | null;
           created_by_user_id: string;
           record_version?: number;
           created_at?: string;
@@ -642,6 +669,485 @@ export type Database = {
         Update: never;
         Relationships: NoRelationships;
       };
+      caption_drafts: {
+        Row: {
+          content_item_id: string;
+          editor_json: Json;
+          plain_text: string;
+          normalized_text: string;
+          draft_version: number;
+          updated_by_user_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          content_item_id: string;
+          editor_json?: Json;
+          plain_text?: string;
+          normalized_text?: string;
+          draft_version?: number;
+          updated_by_user_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["caption_drafts"]["Insert"]
+        >;
+        Relationships: NoRelationships;
+      };
+      caption_versions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          version_number: number;
+          editor_json: Json;
+          plain_text: string;
+          normalized_text: string;
+          submitted_by_user_id: string;
+          submitted_at: string;
+          collaboration_room_id: string | null;
+          collaboration_snapshot_version_id: string | null;
+          collaboration_document_revision: number | null;
+          snapshot_hash: string | null;
+          word_count: number | null;
+          grapheme_count: number | null;
+          word_policy_configured: boolean | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          version_number: number;
+          editor_json: Json;
+          plain_text: string;
+          normalized_text: string;
+          submitted_by_user_id: string;
+          submitted_at?: string;
+          collaboration_room_id?: string | null;
+          collaboration_snapshot_version_id?: string | null;
+          collaboration_document_revision?: number | null;
+          snapshot_hash?: string | null;
+          word_count?: number | null;
+          grapheme_count?: number | null;
+          word_policy_configured?: boolean | null;
+        };
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      caption_word_policies: {
+        Row: {
+          id: string;
+          organization_id: string;
+          content_tag_id: number;
+          policy_version: string;
+          recommended_word_limit: number;
+          approaching_offset_words: number;
+          global_hard_maximum_words: number;
+          enabled: boolean;
+          effective_at: string;
+          policy_timezone: string;
+          source_reference: string;
+          owner_reference: string;
+          supplied_or_approved_by_user_id: string | null;
+          superseded_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      caption_version_word_policy_evidence: {
+        Row: {
+          caption_version_id: string;
+          policy_id: string;
+          policy_version: string;
+          content_tag_id: number;
+          evaluated_word_count: number;
+          recommended_word_limit: number;
+          approaching_offset_words: number;
+          global_hard_maximum_words: number;
+          warning_state: CaptionPolicyWarningState;
+          recommendation_exempt: boolean;
+          exemption_reason: string | null;
+          policy_effective_at: string;
+          policy_timezone: string;
+          source_reference: string;
+          owner_reference: string;
+          evaluated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      caption_version_destination_policy_evidence: {
+        Row: {
+          caption_version_id: string;
+          publication_channel_id: string;
+          policy_id: string | null;
+          policy_version: string | null;
+          destination_slug: string;
+          destination_label: string;
+          evaluated_grapheme_count: number;
+          character_limit: number | null;
+          limit_classification: DestinationLimitClassification | null;
+          warning_state: CaptionPolicyWarningState;
+          policy_effective_at: string | null;
+          policy_timezone: string | null;
+          source_reference: string | null;
+          owner_reference: string | null;
+          evaluated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      workflow_instances: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          caption_version_id: string;
+          status: WorkflowInstanceStatus;
+          current_step_id: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      workflow_instance_steps: {
+        Row: {
+          id: string;
+          instance_id: string;
+          step_order: number;
+          kind: WorkflowStepKind;
+          status: WorkflowStepStatus;
+          decided_by_user_id: string | null;
+          decision_reason: string | null;
+          decided_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      workflow_notifications: {
+        Row: {
+          id: string;
+          recipient_user_id: string;
+          organization_id: string;
+          content_item_id: string;
+          workflow_instance_id: string | null;
+          caption_version_id: string | null;
+          kind: string;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      caption_reactions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          caption_version_id: string;
+          actor_user_id: string;
+          kind: CaptionReactionKind;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      ai_style_profiles: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string | null;
+          scope: string;
+          owner_user_id: string;
+          name: string;
+          status: string;
+          active_version_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      ai_style_profile_versions: {
+        Row: {
+          id: string;
+          profile_id: string;
+          version_number: number;
+          rules: Json;
+          created_by_user_id: string;
+          created_at: string;
+          activated_at: string | null;
+          activated_by_user_id: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      collaboration_documents: {
+        Row: {
+          content_item_id: string;
+          organization_id: string;
+          project_id: string;
+          room_id: string;
+          field_name: string;
+          document_revision: number;
+          latest_snapshot_version_id: string | null;
+          latest_snapshot_hash: string | null;
+          latest_snapshot_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          content_item_id: string;
+          organization_id: string;
+          project_id: string;
+          room_id: string;
+          field_name?: string;
+          document_revision?: number;
+          latest_snapshot_version_id?: string | null;
+          latest_snapshot_hash?: string | null;
+          latest_snapshot_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["collaboration_documents"]["Insert"]
+        >;
+        Relationships: NoRelationships;
+      };
+      collaboration_sessions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          user_id: string;
+          access_mode: CollaborationAccessMode;
+          authorized_at: string;
+          last_revalidated_at: string;
+          expires_at: string;
+          revoked_at: string | null;
+          revocation_reason: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      collaboration_threads: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          anchor: Json;
+          created_by_user_id: string;
+          resolved_by_user_id: string | null;
+          resolved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      collaboration_comments: {
+        Row: {
+          id: string;
+          thread_id: string;
+          parent_comment_id: string | null;
+          author_user_id: string;
+          body: string;
+          edited_at: string | null;
+          deleted_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      collaboration_mentions: {
+        Row: {
+          comment_id: string;
+          mentioned_user_id: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      collaboration_suggestions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          author_user_id: string;
+          kind: CollaborationSuggestionKind;
+          anchor: Json;
+          source_text: string;
+          replacement_text: string;
+          state: CollaborationSuggestionState;
+          record_version: number;
+          decided_by_user_id: string | null;
+          decided_at: string | null;
+          decision_reason: string | null;
+          applied_by_user_id: string | null;
+          applied_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      collaboration_audit_events: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          content_item_id: string;
+          actor_user_id: string;
+          thread_id: string | null;
+          comment_id: string | null;
+          suggestion_id: string | null;
+          event_type: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      integration_connections: {
+        Row: {
+          id: string;
+          organization_id: string;
+          provider: "notion";
+          label: string;
+          status: "configured" | "active" | "degraded" | "disabled";
+          notion_workspace_id: string;
+          notion_subscription_id: string;
+          notion_data_source_id: string;
+          field_mappings: Json;
+          mapping_version: number;
+          configured_by_user_id: string;
+          last_success_at: string | null;
+          last_failure_at: string | null;
+          last_error_code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      notion_object_links: {
+        Row: {
+          id: string;
+          integration_connection_id: string;
+          organization_id: string;
+          project_id: string;
+          notion_page_id: string;
+          last_external_edited_at: string | null;
+          last_import_hash: string | null;
+          last_export_hash: string | null;
+          last_imported_at: string | null;
+          last_exported_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      webhook_events: {
+        Row: {
+          id: string;
+          integration_connection_id: string;
+          provider_event_id: string;
+          provider_event_type: string;
+          provider_timestamp: string;
+          external_object_id: string;
+          payload_sha256: string;
+          state: string;
+          received_at: string;
+          processed_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      sync_runs: {
+        Row: {
+          id: string;
+          integration_connection_id: string;
+          webhook_event_id: string | null;
+          object_link_id: string | null;
+          direction: "import" | "export" | "reconcile";
+          state: string;
+          attempt_number: number;
+          next_attempt_at: string | null;
+          error_code: string | null;
+          input_hash: string | null;
+          output_hash: string | null;
+          initiated_by_user_id: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      sync_conflicts: {
+        Row: {
+          id: string;
+          integration_connection_id: string;
+          object_link_id: string | null;
+          sync_run_id: string | null;
+          kind: string;
+          state: "open" | "resolved";
+          detail_code: string;
+          resolved_by_user_id: string | null;
+          resolved_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
+      dead_letter_events: {
+        Row: {
+          id: string;
+          integration_connection_id: string;
+          webhook_event_id: string | null;
+          sync_run_id: string | null;
+          reason_code: string;
+          replay_count: number;
+          replayed_by_user_id: string | null;
+          resolved_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: NoRelationships;
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -782,6 +1288,194 @@ export type Database = {
         };
         Returns: string;
       };
+      update_scheduled_publication_time: {
+        Args: {
+          p_content_item_id: string;
+          p_expected_version: number;
+          p_scheduled_publication_at: string | null;
+        };
+        Returns: boolean;
+      };
+      record_content_policy_evaluation: {
+        Args: {
+          p_content_item_id: string;
+          p_expected_version: number;
+          p_policy_fingerprint: string;
+        };
+        Returns: boolean;
+      };
+      authorize_collaboration_session: {
+        Args: { p_content_item_id: string };
+        Returns: {
+          session_id: string;
+          user_id: string;
+          organization_id: string;
+          room_id: string;
+          access_mode: CollaborationAccessMode;
+          expires_at: string;
+          display_name: string;
+        }[];
+      };
+      revalidate_collaboration_session: {
+        Args: { p_content_item_id: string };
+        Returns: {
+          session_id: string;
+          access_mode: CollaborationAccessMode;
+          expires_at: string;
+          revoked: boolean;
+          reason: string | null;
+        }[];
+      };
+      create_collaboration_thread: {
+        Args: {
+          p_content_item_id: string;
+          p_anchor: Json;
+          p_body: string;
+          p_mentioned_user_ids?: string[];
+        };
+        Returns: string;
+      };
+      reply_to_collaboration_thread: {
+        Args: {
+          p_thread_id: string;
+          p_body: string;
+          p_mentioned_user_ids?: string[];
+        };
+        Returns: string;
+      };
+      resolve_collaboration_thread: {
+        Args: { p_thread_id: string; p_resolved: boolean };
+        Returns: boolean;
+      };
+      create_collaboration_suggestion: {
+        Args: {
+          p_content_item_id: string;
+          p_kind: CollaborationSuggestionKind;
+          p_anchor: Json;
+          p_source_text: string;
+          p_replacement_text: string;
+        };
+        Returns: string;
+      };
+      decide_collaboration_suggestion: {
+        Args: {
+          p_suggestion_id: string;
+          p_expected_version: number;
+          p_action: string;
+          p_reason?: string | null;
+        };
+        Returns: boolean;
+      };
+      mark_collaboration_suggestion_applied: {
+        Args: { p_suggestion_id: string; p_expected_version: number };
+        Returns: boolean;
+      };
+      set_caption_reaction: {
+        Args: {
+          p_caption_version_id: string;
+          p_kind: CaptionReactionKind | null;
+          p_comment?: string | null;
+        };
+        Returns: string | null;
+      };
+      mark_notification_read: {
+        Args: { p_notification_id: string };
+        Returns: boolean;
+      };
+      get_collaboration_capabilities: {
+        Args: { p_content_item_id: string };
+        Returns: {
+          access_mode: CollaborationAccessMode;
+          can_comment: boolean;
+          can_suggest: boolean;
+          can_review: boolean;
+        }[];
+      };
+      list_collaboration_workflow_templates: {
+        Args: { p_content_item_id: string };
+        Returns: { id: string; name: string }[];
+      };
+      finalize_collaboration_snapshot: {
+        Args: {
+          p_actor_user_id: string;
+          p_organization_id: string;
+          p_project_id: string;
+          p_project_assignment_id: string;
+          p_content_item_id: string;
+          p_template_id: string;
+          p_room_id: string;
+          p_expected_item_record_version: number;
+          p_expected_document_revision: number;
+          p_snapshot_version_id: string;
+          p_editor_json: Json;
+          p_plain_text: string;
+          p_normalized_text: string;
+          p_snapshot_hash: string;
+          p_word_count: number;
+          p_grapheme_count: number;
+        };
+        Returns: string;
+      };
+      configure_notion_integration: {
+        Args: {
+          p_organization_id: string;
+          p_label: string;
+          p_workspace_id: string;
+          p_subscription_id: string;
+          p_data_source_id: string;
+          p_field_mappings: Json;
+        };
+        Returns: string;
+      };
+      activate_notion_integration: {
+        Args: { p_connection_id: string };
+        Returns: boolean;
+      };
+      replay_notion_dead_letter: {
+        Args: { p_dead_letter_id: string };
+        Returns: string;
+      };
+      resume_notion_sync_run: {
+        Args: { p_sync_run_id: string };
+        Returns: string;
+      };
+      resolve_notion_sync_conflict: {
+        Args: { p_conflict_id: string };
+        Returns: boolean;
+      };
+      accept_notion_webhook_event: {
+        Args: {
+          p_workspace_id: string;
+          p_subscription_id: string;
+          p_provider_event_id: string;
+          p_provider_event_type: string;
+          p_provider_timestamp: string;
+          p_external_object_id: string;
+          p_payload_sha256: string;
+        };
+        Returns: { webhook_event_id: string; is_duplicate: boolean }[];
+      };
+      apply_notion_project_import: {
+        Args: {
+          p_webhook_event_id: string;
+          p_external_page_id: string;
+          p_external_edited_at: string;
+          p_title: string;
+          p_event_starts_at: string | null;
+          p_deadline_at: string | null;
+          p_payload_hash: string;
+        };
+        Returns: { project_id: string; applied: boolean }[];
+      };
+      record_notion_sync_failure: {
+        Args: {
+          p_sync_run_id: string;
+          p_state: string;
+          p_error_code: string;
+          p_next_attempt_at?: string | null;
+        };
+        Returns: boolean;
+      };
     };
     Enums: {
       organization_role: OrganizationRole;
@@ -791,6 +1485,11 @@ export type Database = {
       access_security_event_outcome: AccessSecurityEventOutcome;
       project_assignment_role: ProjectAssignmentRole;
       content_responsibility: ContentResponsibility;
+      collaboration_access_mode: CollaborationAccessMode;
+      collaboration_suggestion_kind: CollaborationSuggestionKind;
+      collaboration_suggestion_state: CollaborationSuggestionState;
+      caption_reaction_kind: CaptionReactionKind;
+      caption_policy_warning_state: CaptionPolicyWarningState;
       destination_limit_classification: DestinationLimitClassification;
       content_status: ContentStatus;
       project_content_event_type: ProjectContentEventType;

@@ -10,6 +10,8 @@ import {
   createProject,
   updateContentItem,
   updateProject,
+  saveCaptionDraft,
+  submitCaptionVersion,
 } from "@/features/projects/data";
 import {
   contentResponsibilityInputSchema,
@@ -19,7 +21,24 @@ import {
   projectInputSchema,
   projectAssignmentInputSchema,
   projectUpdateSchema,
+  captionDraftInputSchema,
+  captionSubmitInputSchema,
 } from "@/features/projects/schemas";
+
+export async function saveCaptionDraftAction(formData: FormData) {
+  const parsed = captionDraftInputSchema.safeParse({ projectId: formData.get("projectId"), contentItemId: formData.get("contentItemId"), expectedVersion: formData.get("expectedVersion"), plainText: formData.get("plainText") });
+  if (!parsed.success) redirect("/access-denied");
+  try { await saveCaptionDraft(parsed.data); } catch { redirect("/access-denied"); }
+  revalidatePath(`/projects/${parsed.data.projectId}/content/${parsed.data.contentItemId}`);
+}
+
+export async function submitCaptionVersionAction(formData: FormData) {
+  const parsed = captionSubmitInputSchema.safeParse({ projectId: formData.get("projectId"), contentItemId: formData.get("contentItemId"), expectedDraftVersion: formData.get("expectedDraftVersion") });
+  if (!parsed.success) redirect("/access-denied");
+  try { await submitCaptionVersion(parsed.data); } catch { redirect("/access-denied"); }
+  const path = `/projects/${parsed.data.projectId}/content/${parsed.data.contentItemId}`;
+  revalidatePath(path); redirect(`${path}?notice=submitted`);
+}
 
 function checkboxValue(value: FormDataEntryValue | null) {
   return value === "on";

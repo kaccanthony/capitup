@@ -23,7 +23,7 @@ flowchart LR
     T -->|signed webhook| N
 ```
 
-No standalone Express API is planned for the MVP. A persistent Hocuspocus service is an alternative only if the collaboration-hosting decision rejects managed Liveblocks.
+No standalone Express API or self-hosted collaboration service is planned for the MVP. Managed Liveblocks is the sole development and deployed realtime provider under A-028.
 
 ## Responsibility boundaries
 
@@ -34,15 +34,15 @@ No standalone Express API is planned for the MVP. A persistent Hocuspocus servic
 | Membership, roles, assignments, policies, metadata, workflow state | Supabase PostgreSQL with RLS |
 | Immutable caption versions and final approvals | Supabase PostgreSQL |
 | Attachments and reference assets | Supabase Storage with matching policies |
-| Live editor state, selections, cursors, presence, text anchors | Liveblocks + TipTap + Yjs |
-| Comment/suggestion authorization and durable audit metadata | Supabase; provider IDs/anchors reference the collaboration layer |
+| Live editor state, selections, cursors, presence, and Yjs-relative anchor movement | Liveblocks + TipTap + Yjs |
+| Durable comments, replies, mentions, resolutions, suggestions, reactions, and audit evidence | Supabase; records retain Yjs-relative anchors where applicable |
 | Workflow notifications, reactions, activity updates | Supabase Realtime backed by durable records |
 | Approved-example retrieval | PostgreSQL + `pgvector` |
 | Caption generation | Server-side OpenAI Responses API |
 | Calendar/project metadata source | Notion for explicitly mapped fields |
 | Caption, version, decision, and approval source | CapItUp/Supabase |
 
-**Open:** Before Phase 5, define whether the canonical body/status of anchored comment threads is mirrored into Supabase or retained by Liveblocks with only authorization/audit metadata in Supabase. The result must preserve export, retention, and audit requirements.
+Room access uses a CapItUp application lease of at most four hours, with reconnect and at-least-minutely revalidation. Liveblocks provider tokens may be shorter. A permission downgrade forces a read-only reconnect; loss of view access disconnects the room. Offline collaboration is disabled.
 
 ## Application organization
 
@@ -90,7 +90,7 @@ Later phases may add feature adapters beneath these boundaries; they must not co
 Phase 02 adds an offline implementation of the authentication and organization-membership boundary without linking or mutating a Supabase project. The hosted development project is the eventual execution environment, but its configuration and migration application require a separate authorized step.
 
 - `supabase/migrations/20261024000100_phase_02_auth_membership.sql` is the version-controlled schema and policy source. It defines organizations, identity requirements, profiles, allowlist entries, memberships, role assignments, authentication security events, constraints, indexes, trusted functions, grants, and RLS.
-- `src/lib/supabase/browser.ts` creates a browser client from only the public URL and publishable/legacy anonymous key. `src/lib/supabase/server.ts` creates a request-scoped cookie client and is guarded by `server-only`. No service-role client is part of the application runtime.
+- `src/lib/supabase/browser.ts` creates a browser client from only the public URL and publishable/legacy anonymous key. `src/lib/supabase/server.ts` creates a request-scoped cookie client. `src/lib/supabase/service-role.ts` is an isolated `server-only` client used only after normal authentication/authorization to execute collaborative snapshot finalization; it is not a general data client.
 - `src/proxy.ts` refreshes Supabase session cookies and performs optimistic redirects. Page-level server authorization still calls `requireActiveMembership`; Proxy is not the trusted authorization boundary.
 - `/auth/callback` exchanges the provider code, invokes the transactional membership claim, rechecks current access, and redirects only to a validated internal path. `/access-denied` and the sign-in action use generic responses.
 - Organization administration is exposed only through server-only helpers backed by narrow SQL functions. The functions derive the actor from `auth.uid()`, require a current same-organization `org_admin`, and do not trust browser-supplied actor or organization claims.
@@ -106,7 +106,7 @@ organization administration helper -> active same-org admin check -> trusted RPC
 browser table access               -> explicit SELECT policy only; direct writes denied
 ```
 
-The selected institutional provider, approved domains, role-display rule, and hosted abuse controls remain open decisions. The current email-link action is deployment-inactive scaffolding and does not settle those product choices.
+Google OAuth and Microsoft Azure OAuth are the selected primary institutional providers under A-021. The current email-link action is deployment-inactive scaffolding and must be replaced by those providers plus the deliberately disclosed email/password fallback before hosted authentication is enabled. Approved domains, role-display rules, and hosted abuse controls remain open decisions.
 
 ## Phase 03 offline projects and content boundary
 
@@ -139,8 +139,8 @@ The exact SQL belongs in reviewed migrations. The logical groups are:
 - Identity: `organizations`, `profiles`, `organization_memberships`, `organization_role_assignments`, `member_allowlist`, `project_assignments`, `access_security_events`.
 - Projects and configuration: `projects`, `content_requests`, `content_formats`, `content_tags`, `content_format_tags`, `content_tag_requests`, `publication_channels`, `content_publication_channels`, `deliverables`, `caption_limit_policies`, `caption_limit_exceptions`.
 - Destination-policy extension: private launch templates plus organization-scoped `publication_channel_policies` and policy/content-format mappings. The templates initialize the owner-supplied v1 manual-publication catalog without placing limits in UI components.
-- Workflow: `workflow_templates`, `workflow_template_steps`, `workflow_instances`, `workflow_instance_steps`, `approval_decisions`, `notifications`, `audit_events`.
-- Caption work: `caption_items`, `caption_versions`, `collaboration_documents`, `caption_assignments`, `comments`, `comment_threads`, `suggestions`, `comment_mentions`, `reactions`, and deliverable-link references.
+- Workflow: `workflow_templates`, `workflow_template_steps`, `workflow_instances`, `workflow_instance_steps`, `approval_decisions`, `workflow_notifications`, `audit_events`.
+- Caption work: `content_items`, `caption_versions`, `collaboration_documents`, `caption_word_policies`, immutable word/destination policy-evidence rows, assignments, comments, threads, suggestions, mentions, reactions, and deliverable-link references.
 - AI: `style_profiles`, `style_rules`, `style_samples`, `caption_embeddings`, `ai_generation_runs`, `ai_feedback`.
 - Integrations: `integration_connections`, `notion_object_links`, `sync_cursors`, `sync_runs`, `webhook_events`, `dead_letter_events`.
 
@@ -178,7 +178,7 @@ The exact provider, institutional domain, and fallback method are open decisions
 
 1. An authorized initializer copies the approved private v1 destination templates into organization-scoped, versioned policies without overwriting existing policy versions.
 2. The editor resolves every selected destination's current policy and computes a separate visible-grapheme count that includes all text, URLs, hashtags, mentions, whitespace, punctuation, and emoji.
-3. Validation returns the precise failing destination(s); a later ready-for-publication workflow blocks only when one or more selected destination limits are exceeded.
+3. Validation returns the precise warning destination(s). Phase 05 stores and displays that warning evidence during review but does not introduce a new publication-blocking rule.
 4. Caption versions and formal decisions retain policy-version references so supersession never rewrites historical validation.
 
 ### Realtime collaboration and snapshot handoff
@@ -186,8 +186,16 @@ The exact provider, institutional domain, and fallback method are open decisions
 1. A client requests room access from a Next.js server endpoint.
 2. The server verifies the Supabase session, active organization membership, project access, current assignment, and requested capability.
 3. The server issues only the minimum Liveblocks room permissions.
-4. Liveblocks/Yjs synchronizes the working document, presence, selections, and anchors.
-5. Submission reads a consistent document state and creates the immutable Supabase version; approval never targets the moving Yjs document.
+4. Liveblocks/Yjs synchronizes the working document, presence, and selections; CapItUp stores durable review records and encoded Yjs-relative anchors in Supabase.
+5. Submission creates a Liveblocks version-history snapshot and reads/validates that exact Yjs version on the server.
+6. The route authenticates with the normal cookie client, verifies current write access and writer assignment, computes shared word/grapheme counts, and then invokes a service-role-only finalization RPC.
+7. The database operation locks and revalidates the supplied actor, organization, project, assignment, room, workflow template, item/document revisions, and snapshot replay state before atomically storing immutable content, provider/hash references, exact policy evidence, warnings, and the workflow instance. Approval never targets the moving document.
+
+### App-wide notifications
+
+1. The browser publishable client reads `workflow_notifications`; recipient-only RLS remains the authority.
+2. The notification center derives the current authenticated user, subscribes to recipient-filtered Supabase Realtime changes, and maintains the unread count from durable rows.
+3. Mark-read uses `mark_notification_read`, which updates only rows whose `recipient_user_id` equals `auth.uid()`.
 
 ### AI generation
 
@@ -223,7 +231,7 @@ Search operates over canonical plain text and normalized searchable text, never 
 
 - Vercel hosts the Next.js application, server routes, AI streaming, room authorization, and webhook handlers.
 - Supabase hosts Auth, PostgreSQL/RLS, Storage, Realtime, and `pgvector`.
-- Managed Liveblocks is the planned collaboration provider unless the open hosting decision selects persistent self-hosted Hocuspocus on Render or Fly.io.
+- Managed Liveblocks is the sole approved development and deployed collaboration provider.
 - Secrets exist only in server deployment configuration or an appropriate encrypted secret store.
 - Phase 0 creates placeholder-only `.env.example`; no real service connection is authorized by the plan.
 - Phase 01 verifies a credential-free local build and local-only Supabase lifecycle. Hosted Supabase, Vercel configuration, and all production secrets remain outside the phase.

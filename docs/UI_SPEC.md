@@ -91,7 +91,7 @@ The card is approximately 420–480 px wide on desktop, constrained to the viewp
 3. concise heading such as **Welcome back**;
 4. explanation that access is limited to authorized organization members;
 5. primary **Continue with Institutional Account** action;
-6. optional institutional email magic-link form only after O-001 and O-002 are resolved;
+6. a lower-page, collapsed "Use email instead" disclosure for the institutional email/password fallback only after O-002 and O-025 are resolved; Google and Microsoft remain the visible primary choices, and the UI must not offer magic links;
 7. generic status/error region that never reveals allowlist membership;
 8. short security/support note.
 
@@ -272,7 +272,7 @@ On screens below the three-column threshold, the rail collapses behind a labeled
 The modal-like login card uses three visual zones:
 
 - **Identity zone:** CapItUp lockup, private-workspace label, heading, and concise authorization message.
-- **Action zone:** institutional-account button and, only if approved later, a labeled magic-link field separated by a textual **or** divider.
+- **Action zone:** visible Google and Microsoft institutional-account controls, then a lower-page collapsed **Use email instead** disclosure that reveals the approved email/password fallback. Do not present a magic-link field.
 - **Support zone:** generic error/status message, help path, and a reminder that access is restricted.
 
 The primary action is at least 48 px high and spans the card width. Inputs, if enabled in a later phase, use persistent visible labels rather than placeholder-only labels. The active field may receive a restrained inner highlight inspired by the reference, but text and caret contrast must remain strong.

@@ -43,7 +43,8 @@
 ### A-007 — Human-controlled AI
 
 - **Status:** Accepted
-- **Decision:** Use the OpenAI Responses API with retrieval from authorized curated examples and explicit style profiles. AI creates editable drafts/suggestions only and never approves, publishes, silently replaces content, or impersonates a reviewer.
+- **Decision:** Use Gemini API for synthetic-development-only caption assistance, with retrieval from authorized curated examples and explicit style profiles. AI creates editable drafts/suggestions only and never approves, publishes, silently replaces content, or impersonates a reviewer.
+- **Boundary:** Gemini Free must receive only synthetic/test content. Private organization captions remain excluded until a provider/data-processing policy is explicitly approved. `GEMINI_API_KEY` remains server-only.
 
 ### A-008 — Notion integration model
 
@@ -127,31 +128,74 @@
 - **Decision:** CapItUp stores separate, validated deliverable-link records for images, videos, articles, Canva/Drive materials, registration links, and other committee-provided media. These links are metadata for the content item and are never part of the caption body.
 - **Explicit exclusions:** No file uploads, Supabase Storage bucket, attachment table, malware scanning, upload/download controls, public asset URLs, or file-retention policy are included. A future change to native uploads requires a new accepted decision, migration, threat review, and security plan.
 
+### A-021 - Phase 02 identity providers and email/password fallback
+
+- **Status:** Accepted on 2026-10-25; resolves O-001
+- **Decision:** Google OAuth and Microsoft Azure OAuth are CapItUp's primary institutional identity providers. The login interface will prioritize those choices. A member may deliberately reveal a lower-page email/password fallback when either OAuth service is unavailable or they choose an alternate approved sign-in method. Passwordless email magic links are not a CapItUp fallback.
+- **Authorization boundary:** Every provider path must still verify the approved institutional identity and pass the exact allowlist, invitation claim, active-membership, and RLS checks. The email/password path must not permit open registration, username/local-part matching, or membership discovery. Passwords remain managed by Supabase Auth and are never stored or handled by CapItUp application code.
+- **Configuration boundary:** No provider console, Supabase Auth setting, redirect URL, secret, or hosted project has been configured by this documentation decision. O-002 still determines approved domains and identity normalization; O-025 still determines CAPTCHA and rate-limit controls.
+
+### A-022 - Mandatory Publicity Director review for standard captions
+
+- **Status:** Accepted on 2026-10-26; resolves O-003
+- **Decision:** Every standard caption requires a Publicity Director review step before final approval. The standard workflow is writer submission, mandatory Publicity Director review, then PRO final approval. A standard workflow cannot skip the Director step.
+
+### A-023 - Only scheduled publication-time edits preserve approval
+
+- **Status:** Accepted on 2026-11-06; resolves O-005
+- **Decision:** Changing only the scheduled publication time preserves existing approval. Any change to caption content, title, content kind, tags, destination platforms, deliverable links, content assignments, special-case settings, or the evaluated policy invalidates the affected approval and moves the content into a new review state. Historical versions, decisions, and audit evidence remain immutable.
+
+### A-024 - In-app notifications for the MVP
+
+- **Status:** Partially accepted on 2026-10-26; partially resolves O-022
+- **Decision:** Durable in-app notifications are sufficient for the MVP. External email notifications are deferred until a provider, sender domain, authentication, delivery policy, and unsubscribe requirements are separately chosen. Phase 04 may create in-app notification records but must not send email.
+
+### A-025 - Independent approval of PRO-authored captions
+
+- **Status:** Partially accepted on 2026-10-26; partially resolves O-004
+- **Decision:** A PRO cannot independently self-approve a caption they authored. A workflow instance must freeze exactly one independent alternative: Publicity Director only, one existing `executive` with an explicit President designation, or unanimous active `junior_officer` members. A President designation is separate authorization data, never a client-provided or display-only title.
+- **Junior-Officer roster rule:** The workflow snapshots every active Junior Officer at instance creation. A snapshot member who later becomes suspended, expires, or resigns is ignored for unanimity. The product does not define an availability-only membership state; it must not silently excuse a merely unavailable active member.
+- **Designation governance:** The website owner may grant or revoke the President designation. A `publicity_director` may revoke, but not grant, it. Both paths must be server-authorized, require a reason, and create immutable audit evidence. The owner is a server-managed allowlist authority, never a client-editable display label.
+- **Availability governance:** A `publicity_director` or `pro` may mark an active Junior Officer temporarily unavailable, with a required audit reason. The frozen workflow roster must exclude that unavailable member from unanimity until the recorded availability ends or is revoked; suspension, expiry, and resignation remain independently non-blocking.
+
+### A-026 - Phase 5 suggestion implementation
+
+- **Status:** Accepted on 2026-10-26; resolves O-013
+- **Decision:** CapItUp will not use Tiptap's paid Tracked Changes extension. It will implement a narrower first-party suggestion-record model: an attributed insert, delete, or replacement proposal is anchored to the live document and mirrored to Supabase. An authorized reviewer may accept or reject the intact proposal through a trusted server operation, which creates immutable audit evidence. A proposal that cannot be safely applied after intervening edits becomes stale and requires a new proposal; it must not silently overwrite current content.
+- **Rationale:** This preserves the product's required human review, attribution, auditability, and authorization boundaries without introducing an external paid Tiptap dependency. It is intentionally not represented as the full Tiptap/word-processor tracked-changes product.
+
+### A-027 - Phase 6 style and Gemini development policy
+
+- **Status:** Accepted on 2026-10-27; resolves O-016, O-017, O-018, and the AI-log portion of O-023
+- **Curatorship:** A `publicity_director` or `pro` may create and edit organization-default or campaign style profiles. An active `publicity_head` may create and edit campaign profiles only within their assigned project. A `publicity_director`, `pro`, `executive`, or eligible active `publicity_head` may activate the corresponding profile. Activation is server-authorized and audited; an Executive's exception applies only to style-profile activation, not caption editing or general settings.
+- **Personal samples:** Personal samples are private to the author by default. Authors may explicitly share a sample with the organization and later revoke that sharing; revocation excludes it from every future retrieval immediately. It does not retroactively alter historical generation provenance.
+- **Gemini development boundary:** Use `gemini-3.8-flash` as the current Gemini Flash model. Gemini Free is limited to synthetic/test content. Private organization captions, styles, samples, and prompts remain excluded until a provider/data-processing policy explicitly authorizes them.
+- **Quota, abuse control, and retention:** Allow at most 5 requests per user per rolling 10-minute window, 25 requests per user per UTC day, and 250 requests per organization per UTC day. A rate-limited account resets automatically when its 10-minute window expires; there is no manual unblock. Enforce these limits atomically against the authenticated account and organization, never a username. Retain AI generation logs for 180 days. Persist generated caption content only after a user explicitly inserts or saves it; a generation run may retain only the non-content provenance/usage necessary for the 180-day record. The broader O-023 retention decision remains open for other data classes.
+- **Evaluation gate:** Before private-caption use can be enabled with an approved provider, the versioned evaluation suite must show at least 80% human-reviewed acceptance. This does not override the Gemini Free synthetic-only boundary.
+
+### A-028 - Phase 5 Liveblocks, canonical collaboration data, and revocation
+
+- **Status:** Accepted on 2026-11-06; resolves O-012, O-014, and O-015
+- **Provider:** Managed Liveblocks is the sole development and deployed realtime collaboration provider. CapItUp does not deploy Hocuspocus or another collaboration server. `LIVEBLOCKS_SECRET_KEY` remains server-only.
+- **Canonical storage:** Liveblocks owns realtime Yjs transport, presence, cursors, selections, and provider snapshots. Supabase is the durable system of record for collaboration-document references, comments, replies, mentions, suggestions, resolutions, decisions, attribution, and audit evidence. Submitted caption versions retain the exact Liveblocks snapshot/version reference plus immutable JSON, plain text, normalized text, and a content hash.
+- **Authorization lease:** CapItUp authorizes a collaboration session for no more than four hours. It revalidates on every connection or reconnection and at least once per minute while connected. A member who retains view access is downgraded to read-only; a member who loses view access is disconnected. Durable Supabase mutations always reauthorize independently of the room token.
+- **Revocation and offline behavior:** Assignment or membership changes revoke matching CapItUp collaboration sessions. The client promptly reloads or disconnects after observing the change. Offline support is disabled; edits produced after authorization expires or is revoked are not accepted as an authoritative snapshot or durable mutation. Users may copy unsent local text, but it cannot overwrite the canonical document automatically.
+- **Provider limitation:** The selected Liveblocks access-token API does not expose custom token expiry or active-token revocation. Four hours is therefore CapItUp's maximum application lease; Liveblocks may issue a shorter provider token. Prompt client downgrade/eviction is enforced through CapItUp revalidation, while hard provider-token expiry remains provider-controlled.
+
 ## Open decisions
 
 | ID | Decision needed | Must resolve before | Required outcome/evidence |
 |---|---|---|---|
-| O-001 | Institutional identity provider: Google, Microsoft, magic-link/email fallback, or permitted combination | Phase 2 | Provider, ownership, verified claim used, callback requirements |
 | O-002 | Exact institutional email domain(s) and normalization rules | Phase 2 | Approved domains and exception process |
-| O-003 | Whether the Publicity Director review is mandatory for every standard caption | Phase 4 | Standard workflow template and skip rules |
-| O-004 | Whether a PRO may author and submit directly to final approval or requires independent review | Phase 4 | Separation-of-duties rule and tests |
-| O-005 | Which metadata edits do not invalidate approval | Phase 4 | Explicit field allowlist; all unspecified edits invalidate |
 | O-006 | Organization role cardinality and primary-title presentation for people holding multiple roles | Phase 2 | Storage/UI rule without reducing authorization to one role |
 | O-010 | Official colors, logo rules, and typefaces | The UI-foundation phase for final branding; placeholders may precede it | Approved brand inputs; otherwise retain provisional accessible tokens |
-| O-012 | Managed Liveblocks/TipTap budget versus self-hosted Hocuspocus on Render/Fly.io | Phase 5 | Provider/hosting, cost owner, data residency, retention, recovery |
-| O-013 | Whether full tracked changes is required at launch and whether paid TipTap capability is acceptable | Phase 5 | Paid feature or approved narrower suggestion-record behavior |
-| O-014 | Canonical storage/mirroring and export model for anchored comments/suggestions | Phase 5 | Liveblocks versus Supabase ownership, retention, audit, recovery contract |
-| O-015 | Assignment revocation/expiry behavior for already-connected collaboration sessions | Phase 5 | Token lifetime, revalidation, eviction, offline behavior |
-| O-016 | Who curates organization-level AI style profiles and samples | Phase 6 | Authorized roles and audit workflow |
-| O-017 | Whether personal writing samples are author-only or may be shared with the organization | Phase 6 | Consent, visibility, revocation, retrieval rules |
-| O-018 | AI model selection, quota limits, prompt/output retention, and evaluation thresholds | Phase 6 | Versioned model/prompt policy, budgets, retention, go/no-go criteria |
 | O-019 | Whether the existing Notion calendar is a database view or the separate Notion Calendar product | Phase 7 | Confirmed integration surface; use source calendar API if required |
 | O-020 | Existing Notion properties and exact field ownership/mapping | Phase 7 | Property IDs/types, source of truth, direction, null/conflict rules |
 | O-021 | Whether final approved captions sync to Notion | Phase 7 | Explicit opt-in field, direction, sanitization, failure behavior |
-| O-022 | Whether email plus in-app notifications are sufficient for MVP and which email provider is used | Phase 4 before external email; Phase 8 before pilot | Channel scope, provider, sender domain, unsubscribe/delivery rules |
-| O-023 | Retention for drafts, deleted items, audit history, collaboration state, AI logs, sync logs, and security events | Before production data in affected phase; no later than Phase 8 | Per-class duration, deletion/anonymization, legal owner |
+| O-022 | Email provider, sender domain, authentication, and delivery/unsubscribe rules after the accepted in-app-only MVP | Before external email; Phase 8 before pilot | Provider, sender domain, unsubscribe/delivery rules |
+| O-023 | Retention for drafts, deleted items, audit history, collaboration state, sync logs, and security events | Before production data in affected phase; no later than Phase 8 | Per-class duration, deletion/anonymization, legal owner; AI logs are set by A-027 |
 | O-024 | Backup frequency, recovery point/time objectives, and responsible operator | Phase 8 | Documented targets and successful recovery exercise |
-| O-025 | CAPTCHA/rate-limit provider, thresholds, and administrative unblock procedure | Phase 2 for auth; Phase 6 for AI | Abuse policy that cannot globally lock another person's account |
+| O-025 | CAPTCHA/rate-limit provider, thresholds, and administrative unblock procedure for authentication | Phase 2 | AI limits and automatic reset are set by A-027; authentication still needs an abuse policy that cannot globally lock another person's account |
 | O-027 | Pilot participants, support owner, metrics baseline/targets, and exit criteria | Phase 8 | Approved pilot charter and privacy-safe measurement plan |
 | O-028 | Permanent phase numbering after the user-directed Phase 01 foundation: retire/rename the earlier Phase 0 and UI-foundation files, or re-sequence the remaining roadmap | Before authorizing the next implementation phase | One unambiguous phase sequence reflected consistently in `PLANS.md` and `harness/build/` |
 
@@ -159,7 +203,7 @@
 
 - The product brief contains legacy `CaptionFlow` prose and scaffold commands. Planning uses `CapItUp` because repository instructions explicitly make that the product identity; the product behavior is otherwise unchanged.
 - Phase 4 owns durable workflow-notification creation. Phase 5 adds realtime delivery/presence and the integrated notification center; this avoids implementing the same responsibility twice.
-- Liveblocks owns live anchors and transport while Supabase owns authorization, immutable versions, workflow, and audit. O-014 must settle durable comment/suggestion canonical storage before implementation.
+- Liveblocks owns live Yjs transport, presence, selections, and provider snapshots. Under A-028, Supabase owns durable comments, replies, mentions, resolutions, suggestions, reactions, authorization evidence, immutable versions, workflow, and audit records.
 - AI and Notion are included in the roadmap but are not gates for the first internal usability test of the trusted core. They remain part of the full planned sequence unless product scope is formally changed.
 - The current Phase 01 foundation overlaps the earlier Phase 0 foundation scope by explicit user direction. Existing compliant implementation should be audited and reused rather than regenerated. Until O-028 is resolved, neither `PLANS.md` nor the older `phase-01-ui-foundation.md` authorizes the next implementation phase.
 

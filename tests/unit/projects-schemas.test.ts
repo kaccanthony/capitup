@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { CONTROLLED_TAGS, TAGS_BY_KIND } from "@/features/content/taxonomy";
 import {
+  captionDraftInputSchema,
+  captionSubmitInputSchema,
   contentCreateSchema,
   deliverableInputSchema,
   projectAssignmentInputSchema,
 } from "@/features/projects/schemas";
+
+describe("caption version inputs", () => {
+  it("requires an optimistic draft version before submission", () => {
+    expect(captionDraftInputSchema.safeParse({ projectId: "00000000-0000-4000-8000-000000000001", contentItemId: "00000000-0000-4000-8000-000000000002", expectedVersion: 0, plainText: "Draft" }).success).toBe(true);
+    expect(captionSubmitInputSchema.safeParse({ projectId: "00000000-0000-4000-8000-000000000001", contentItemId: "00000000-0000-4000-8000-000000000002", expectedDraftVersion: 0 }).success).toBe(false);
+  });
+});
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const membershipId = "22222222-2222-4222-8222-222222222222";

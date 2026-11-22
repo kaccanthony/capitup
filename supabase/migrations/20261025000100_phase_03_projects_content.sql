@@ -886,6 +886,7 @@ declare
   v_item public.content_items%rowtype;
   v_format public.content_formats%rowtype;
   v_tag_count integer;
+  v_special_case_reason text;
 begin
   select * into v_item
   from public.content_items
@@ -926,16 +927,18 @@ begin
     raise exception 'invalid content taxonomy' using errcode = '22023';
   end if;
 
+  v_special_case_reason := case
+    when p_is_special_case then nullif(btrim(p_special_case_reason), '')
+    else null
+  end;
+
   delete from public.content_item_tags where content_item_id = v_item.id;
 
   update public.content_items
   set title = btrim(p_title),
       content_format_id = v_format.id,
       is_special_case = p_is_special_case,
-      special_case_reason = case
-        when p_is_special_case then nullif(btrim(p_special_case_reason), '')
-        else null
-      end,
+      special_case_reason = v_special_case_reason,
       record_version = record_version + 1
   where id = v_item.id;
 
@@ -956,10 +959,7 @@ begin
   );
 
   if v_item.is_special_case is distinct from p_is_special_case
-    or v_item.special_case_reason is distinct from case
-      when p_is_special_case then nullif(btrim(p_special_case_reason), '')
-      else null
-    end then
+    or v_item.special_case_reason is distinct from v_special_case_reason then
     insert into public.project_content_audit_events (
       organization_id, actor_user_id, project_id, content_item_id,
       event_type, reason_code,

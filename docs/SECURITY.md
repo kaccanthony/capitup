@@ -86,7 +86,7 @@ Phase 03 extends the offline authorization design without claiming hosted databa
 - Generic content metadata mutation cannot select workflow-owned statuses. Phase 03 creates drafts and exposes no approval or collaboration transition.
 - Deliverable input is bounded to HTTP(S), rejects embedded URL credentials, and is rendered as an escaped external link. A-020 excludes attachments, Storage, and uploads.
 - The special-case indicator requires a bounded reason, creates audit evidence when changed, and has no authority to suppress a length rule or create an exception.
-- No application code consumes a service-role key. Public Supabase configuration remains the only browser/server client configuration.
+- The only application service-role consumer is `src/lib/supabase/service-role.ts`, guarded by `server-only` and used solely by collaborative snapshot finalization after normal cookie-session authentication and write authorization. The browser/server request client continues to use only public Supabase configuration, and no secret value is logged or returned.
 
 Offline unit/static tests cover cross-organization denial, viewers, organization/project-role separation, executive read-only behavior, controlled taxonomy, invalid tag combinations, unsafe links, direct-write grants, and server-only imports. `supabase/tests/projects_content_rls.test.sql` contains 18 synthetic runtime assertions, but those assertions remain pending until an isolated hosted development database is explicitly authorized.
 
@@ -99,7 +99,7 @@ The repository now contains the credential-free portion of this boundary. Nothin
 - Membership claims compare the verified session's normalized full email and bind the result to `auth.uid()`. Usernames, local parts, profile fields, and user-editable metadata do not grant access.
 - Suspended and expired memberships fail both server policy classification and database active-membership predicates. A stale authenticated session is not sufficient for application access.
 - Authentication audit rows are append-only from trusted functions and are not readable or writable by browser roles.
-- Browser and server clients use only the Supabase URL plus publishable/anonymous key. `SUPABASE_SERVICE_ROLE_KEY` remains an optional server-only placeholder and no Phase 02 application module consumes it.
+- Phase 02 browser and request clients use only the Supabase URL plus publishable/anonymous key. Phase 05 requires `SUPABASE_SERVICE_ROLE_KEY` only in the isolated finalization adapter; it must remain absent from browser modules and client bundles.
 - The callback accepts only relative internal return paths. Login, callback, and access-denied responses avoid exposing whether an account, domain, invitation, or membership exists.
 - Static boundary tests cover client/service-role separation and RLS presence. Migration/RLS behavior tests are version controlled with synthetic identities, but remain pending until an explicitly authorized isolated hosted development database is available.
 
@@ -149,6 +149,14 @@ Workflow authority is derived from the frozen instance's current step, not merel
 - Prevent unauthorized users from observing presence, names, cursors, selections, comments, or document content.
 - Preserve attribution for edits, suggestions, comments, acceptance/rejection, and snapshot handoff.
 - Define offline/reconnection conflict and data-retention behavior before release.
+
+### Phase 05 collaboration controls
+
+The repository now implements the A-028 boundary without claiming hosted proof. A trusted Next.js endpoint derives the Liveblocks room and least-privilege read/write permission from the authenticated Supabase session. Supabase security-definer functions independently authorize durable comments, mentions, resolutions, suggestions, reactions, and exact snapshot submission; API-facing collaboration tables have RLS and no direct authenticated write grant.
+
+CapItUp records a maximum four-hour application lease, revalidates on reconnect and at least every minute, revokes sessions after relevant membership or assignment changes, and disconnects or reloads when access changes. Offline Liveblocks support is disabled. This is prompt application-layer eviction, not provider-token revocation: Liveblocks controls its own shorter token lifetime and does not expose active-token revocation through the selected API.
+
+Submitted review versions are created from an exact Liveblocks version-history snapshot. The provider version ID, serialized editor JSON, plain and normalized text, and SHA-256 content hash are stored with the immutable Supabase caption version. Reactions are version-bound and non-binding; `needs_refinement` requires a bounded comment. Runtime RLS, revocation, two-session collaboration, and provider snapshot behavior remain unverified until the migration is applied to the hosted development project and the authenticated browser matrix is run.
 
 ## Server operations and secrets
 

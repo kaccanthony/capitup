@@ -7,12 +7,16 @@ import {
   assignContentResponsibilityAction,
   updateContentItemAction,
 } from "@/features/projects/actions";
+import { CollaborationWorkspace } from "@/features/collaboration/collaboration-workspace";
+import { getCollaborationWorkspace } from "@/features/collaboration/data";
 import { ContentForm } from "@/features/projects/content-form";
 import {
   getAccessibleContentItem,
   getAccessibleProject,
   getControlledTaxonomy,
 } from "@/features/projects/data";
+import { AiAssistancePanel } from "@/features/ai/ai-assistance-panel";
+import { listVisibleAiStyleProfiles } from "@/features/ai/data";
 import {
   fieldClassName,
   primaryButtonClassName,
@@ -31,6 +35,8 @@ export default async function ContentRecordPage({
   let item: Awaited<ReturnType<typeof getAccessibleContentItem>>;
   let project: Awaited<ReturnType<typeof getAccessibleProject>>;
   let taxonomy: Awaited<ReturnType<typeof getControlledTaxonomy>>;
+  let collaboration: Awaited<ReturnType<typeof getCollaborationWorkspace>>;
+  let aiStyleProfiles: Awaited<ReturnType<typeof listVisibleAiStyleProfiles>>;
 
   try {
     [item, project, taxonomy] = await Promise.all([
@@ -44,11 +50,20 @@ export default async function ContentRecordPage({
 
   if (!item || !project) redirect("/access-denied");
 
+  try {
+    [collaboration, aiStyleProfiles] = await Promise.all([
+      getCollaborationWorkspace(item),
+      listVisibleAiStyleProfiles(),
+    ]);
+  } catch {
+    redirect("/access-denied");
+  }
+
   return (
     <ProjectWorkspace
       eyebrow={`${item.kind} · ${item.status.replaceAll("_", " ")}`}
       title={item.title}
-      description="Controlled content metadata only. No caption body, editor, approval, or collaboration state is present."
+      description="Live collaborative drafting with durable Supabase comments, suggestions, mentions, resolutions, and immutable review snapshots."
       actions={
         <Link
           className={secondaryButtonClassName}
@@ -115,6 +130,18 @@ export default async function ContentRecordPage({
               </div>
             </dl>
           </section>
+
+          <CollaborationWorkspace
+            projectId={project.id}
+            contentItemId={item.id}
+            workspace={collaboration}
+          />
+
+          <AiAssistancePanel
+            canEdit={item.canEdit}
+            profiles={aiStyleProfiles}
+            styleProfileName={aiStyleProfiles[0]?.name ?? null}
+          />
 
           {item.canEdit && (
             <section

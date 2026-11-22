@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   EnvironmentValidationError,
   parsePublicEnvironment,
-  parseServerEnvironment,
 } from "@/lib/env/shared";
+import { parseServerEnvironment } from "@/lib/env/server-schema";
 
 describe("environment validation", () => {
   it("accepts configured public and server values", () => {
@@ -22,9 +22,9 @@ describe("environment validation", () => {
 
     expect(
       parseServerEnvironment({
-        OPENAI_API_KEY: "synthetic-server-value",
+        GEMINI_API_KEY: "synthetic-server-value",
       }),
-    ).toEqual({ OPENAI_API_KEY: "synthetic-server-value" });
+    ).toEqual({ GEMINI_API_KEY: "synthetic-server-value" });
   });
 
   it("allows absent optional integration values", () => {
@@ -41,14 +41,14 @@ describe("environment validation", () => {
 
     expect(() =>
       parseServerEnvironment({
-        OPENAI_API_KEY: secretValue,
+        GEMINI_API_KEY: secretValue,
         NOTION_API_TOKEN: "",
       }),
     ).toThrow(EnvironmentValidationError);
 
     try {
       parseServerEnvironment({
-        OPENAI_API_KEY: secretValue,
+        GEMINI_API_KEY: secretValue,
         NOTION_API_TOKEN: "",
       });
     } catch (error) {
@@ -61,9 +61,11 @@ describe("environment validation", () => {
   it("keeps client and server environment modules separate", async () => {
     const clientModule = await readFile("src/lib/env/client.ts", "utf8");
     const serverModule = await readFile("src/lib/env/server.ts", "utf8");
+    const sharedModule = await readFile("src/lib/env/shared.ts", "utf8");
 
     expect(clientModule).not.toContain("./server");
     expect(clientModule).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(sharedModule).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(serverModule).toContain('import "server-only"');
   });
 });

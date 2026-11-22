@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/capitup/brand-mark";
 import { LogoutButton } from "@/features/auth/logout-button";
+import { NotificationCenter } from "@/features/notifications/notification-center";
 
 const navigation = [
   { href: "/", label: "Overview", icon: House },
@@ -38,6 +39,7 @@ export function ProjectWorkspace({
       </a>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
+      <NotificationCenter />
 
       <div className="relative z-10 mx-auto grid min-h-dvh max-w-[1500px] grid-cols-1 md:grid-cols-[5.5rem_1fr]">
         <nav

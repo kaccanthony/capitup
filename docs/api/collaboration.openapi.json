@@ -1,0 +1,174 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CapItUp Collaboration API",
+    "version": "0.1.0",
+    "description": "Server-authorized Liveblocks room access, CapItUp access-lease revalidation, and immutable collaboration snapshot submission. Supabase authentication cookies are required; Liveblocks secrets never cross the server boundary."
+  },
+  "servers": [{ "url": "http://localhost:3000" }],
+  "paths": {
+    "/api/liveblocks-auth/{projectId}/{contentId}": {
+      "post": {
+        "summary": "Authorize a Liveblocks room session",
+        "security": [{ "supabaseCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" },
+          { "$ref": "#/components/parameters/ContentId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveblocks access-token response. The provider token may expire before CapItUp's four-hour maximum application lease.",
+            "headers": {
+              "Cache-Control": {
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": { "schema": { "type": "object" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/UnauthorizedText" }
+        }
+      }
+    },
+    "/api/liveblocks-auth/{projectId}/{contentId}/access": {
+      "get": {
+        "summary": "Revalidate the current CapItUp collaboration lease",
+        "security": [{ "supabaseCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" },
+          { "$ref": "#/components/parameters/ContentId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current server-authorized collaboration access.",
+            "headers": {
+              "Cache-Control": {
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AccessLease" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/UnauthorizedJson" }
+        }
+      }
+    },
+    "/api/collaboration-snapshot/{projectId}/{contentId}": {
+      "post": {
+        "summary": "Freeze and submit the exact Liveblocks Yjs state",
+        "description": "Authenticates normally, verifies current write access, creates and validates an exact provider version-history snapshot, then invokes a service-role-only database finalization operation that revalidates identity, scope, assignment, room, workflow, and optimistic state. Stores immutable counts and policy-warning evidence without adding a publication rule.",
+        "security": [{ "supabaseCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" },
+          { "$ref": "#/components/parameters/ContentId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SnapshotRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Immutable version created.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SnapshotResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/SnapshotError" },
+          "401": { "$ref": "#/components/responses/SnapshotError" },
+          "403": { "$ref": "#/components/responses/SnapshotError" },
+          "409": { "$ref": "#/components/responses/SnapshotError" },
+          "503": { "$ref": "#/components/responses/SnapshotError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "supabaseCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sb-access-token",
+        "description": "Representative Supabase SSR cookie. Actual hosted-project cookie names are project-specific and must not be hard-coded into clients."
+      }
+    },
+    "parameters": {
+      "ProjectId": {
+        "name": "projectId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "ContentId": {
+        "name": "contentId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "schemas": {
+      "AccessLease": {
+        "type": "object",
+        "required": ["accessMode", "expiresAt", "revoked", "reason"],
+        "properties": {
+          "accessMode": { "type": "string", "enum": ["read", "write"] },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "revoked": { "type": "boolean" },
+          "reason": { "type": ["string", "null"] }
+        }
+      },
+      "SnapshotRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["templateId"],
+        "properties": {
+          "templateId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "SnapshotResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["captionVersionId", "snapshotHash"],
+        "properties": {
+          "captionVersionId": { "type": "string", "format": "uuid" },
+          "snapshotHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": { "error": { "type": "string" } }
+      }
+    },
+    "responses": {
+      "UnauthorizedText": {
+        "description": "Generic authorization failure.",
+        "content": { "text/plain": { "schema": { "type": "string" } } }
+      },
+      "UnauthorizedJson": {
+        "description": "Generic authorization failure.",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      },
+      "SnapshotError": {
+        "description": "Generic validation, authorization, concurrency, or provider failure.",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      }
+    }
+  }
+}

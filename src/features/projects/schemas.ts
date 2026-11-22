@@ -121,3 +121,16 @@ export const deliverableInputSchema = z.object({
     .nullish()
     .transform((value) => value || null),
 });
+
+export const captionDraftInputSchema = z.object({
+  projectId: uuidSchema,
+  contentItemId: uuidSchema,
+  expectedVersion: z.coerce.number().int().nonnegative(),
+  plainText: z.string().max(20000),
+});
+
+export const captionSubmitInputSchema = z.object({
+  projectId: uuidSchema,
+  contentItemId: uuidSchema,
+  expectedDraftVersion: z.coerce.number().int().positive(),
+});

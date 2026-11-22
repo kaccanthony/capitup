@@ -517,14 +517,15 @@ declare
   v_email text := private.normalize_email(auth.jwt() ->> 'email');
   v_allowlist public.member_allowlist%rowtype;
   v_membership public.organization_memberships%rowtype;
+  v_claim record;
   v_role_assignment_id uuid;
 begin
   if v_user_id is null or v_email is null then
     return false;
   end if;
 
-  select entry, membership
-  into v_allowlist, v_membership
+  select entry as allowlist, membership
+  into v_claim
   from public.member_allowlist entry
   join public.organization_memberships membership
     on membership.allowlist_entry_id = entry.id
@@ -536,6 +537,9 @@ begin
   order by entry.created_at
   for update of entry, membership
   limit 1;
+
+  v_allowlist := v_claim.allowlist;
+  v_membership := v_claim.membership;
 
   if v_allowlist.id is null then
     insert into public.access_security_events (

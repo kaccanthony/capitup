@@ -7,7 +7,7 @@ Implement configurable, frozen, version-bound approval workflows with change-req
 ## Dependencies
 
 - Phases 2–3 complete with trusted authorization and immutable versions.
-- O-003, O-004, and O-005 resolved.
+- A-022, A-023, and A-025 define the standard workflow, approval-invalidation allowlist, and PRO-author separation rules.
 - O-022 resolved before external email is enabled; durable in-app notifications may proceed independently.
 
 ## In-scope work
@@ -17,7 +17,7 @@ Implement configurable, frozen, version-bound approval workflows with change-req
 - Standard Director-to-PRO workflow and one configurable project-led workflow using the applicable subset of head/Director/PRO steps.
 - Atomic recommend/approve/request-changes transitions, current-blocker calculation, resubmission loop, stale-decision detection, and status/step separation.
 - PRO ordinary final approval and Director Override with mandatory reason, exact version, audit evidence, PRO notification, and distinct presentation.
-- New-version invalidation/reopen behavior based on accepted content-versus-metadata policy.
+- New-version invalidation/reopen behavior where scheduled publication time is the only approval-preserving edit; caption content and every other listed approval-sensitive metadata change reopen review.
 - Durable in-app notification records for assignment, changes requested, approval requested, final approval, deadline, and override; email only if separately configured by O-022.
 - Approval timeline and actionable queues.
 

@@ -7,8 +7,8 @@ Add authorized simultaneous editing, presence, anchored discussions, suggestions
 ## Dependencies
 
 - Phases 2–4 complete.
-- O-012, O-013, O-014, and O-015 resolved.
-- Authorized development collaboration provider or self-hosted persistent service is separately approved and configured; this plan contains no credentials.
+- A-026 and A-028 define the suggestion model, managed Liveblocks provider, Supabase canonical collaboration records, four-hour maximum authorization lease, and revocation/offline behavior.
+- Managed Liveblocks is the only approved development and deployed collaboration provider; this plan and repository contain no credential value.
 
 ## In-scope work
 
@@ -20,13 +20,15 @@ Add authorized simultaneous editing, presence, anchored discussions, suggestions
 - Review-lock behavior that prevents ordinary writers from silently changing the submitted immutable snapshot while allowing policy-approved new-draft/comments/suggestions work.
 - Consistent document serialization to immutable versions and proof that final approval references that snapshot.
 - Live workflow/reaction updates and integrated notification center backed by durable Supabase records.
+- Server-only snapshot finalization: normal request authentication and write-access preflight, exact Liveblocks version fetch/validation, then a service-role-only database operation that revalidates every supplied identity and scope.
+- Immutable submission evidence for word/grapheme/destination counts and the exact versioned policy inputs and warning results used at submission.
 
 ## Explicit non-goals
 
 - No AI drafting, Notion sync, automatic publication, or unrelated chat system.
 - No trust in client-provided room names, roles, identities, or permissions.
 - No custom WebSocket server on a Vercel serverless function.
-- No paid tracked-changes feature unless O-013 explicitly approves it.
+- No paid tracked-changes feature; A-026 requires the narrower first-party suggestion-record model.
 - No weakening of immutable-version or workflow rules to accommodate the live document.
 
 ## Expected files and components
@@ -46,6 +48,7 @@ Add authorized simultaneous editing, presence, anchored discussions, suggestions
 - Sanitize/validate rich text, mentions, suggestion payloads, and provider callbacks.
 - Bind provider user identity/display data to trusted membership records, not client claims.
 - Keep provider secrets server-only and exclude them from logs/client bundles.
+- Keep the Supabase service-role key in the isolated server-only finalization adapter. Never import that adapter into a Client Component, expose the key, log it, or grant the finalization RPC to browser roles.
 - Preserve auditable attribution and ensure submitted snapshots cannot race with unacknowledged live state.
 
 ## Acceptance criteria
@@ -56,16 +59,21 @@ Add authorized simultaneous editing, presence, anchored discussions, suggestions
 - Suggestions display author and proposed changes and can be accepted/rejected only by an authorized actor using the accepted implementation.
 - Reconnection/offline scenarios follow O-015 without silently overwriting newer content.
 - Submission captures the intended consistent live state as immutable JSON/plain/normalized text/count, and later edits do not change that version.
+- The browser cannot execute finalization directly. The database operation rejects forged actor/organization/project/assignment/room/workflow inputs, stale item/document/workflow state, and snapshot replay.
+- Review retains the stored word, grapheme, destination, policy-version, limit, evaluated-value, exemption, and warning evidence. Phase 05 adds no new publication-blocking rule.
 - Review lock/new-draft behavior follows workflow policy and stale approvals remain impossible.
-- Live workflow, reactions, and notification center updates remain backed by durable authorized data.
+- The app-wide notification center loads only the current recipient's RLS-filtered records, shows an unread count, applies Realtime changes, and marks records read through the recipient-scoped RPC.
 
 ## Tests and verification commands
+
+The copy-paste hosted verification checklist and evidence template are in `notes/instructions/phase-05-hosted-verification-runbook.md`.
 
 After inspecting actual scripts and approved local/provider test configuration:
 
 ```powershell
 {supabase-cli} db reset
 {pm} run test -- collaboration serialization suggestions
+{pm} run test -- collaboration-finalization-security notification-center
 {pm} run test:integration -- room-authorization realtime-policies
 {pm} run test:e2e -- collaboration-two-session collaboration-denied snapshot-handoff
 {pm} run lint
@@ -82,7 +90,15 @@ Use at least two isolated browser contexts plus denied/suspended/cross-organizat
 - Room authorization request/outcome matrix without token values.
 - Two-session video/trace/screenshots showing concurrency, anchors, suggestions, presence, reconnect, and notification updates.
 - Immutable snapshot hash/content comparison before and after continued live editing.
+- Service-role finalization grant audit plus forged-scope, stale-state, replay, and policy-evaluation test results.
+- Notification recipient-isolation, unread-count, Realtime update, and mark-read evidence.
 - Provider/local-service test environment used, exact commands/results, files changed, and unverified production-provider behavior.
+
+## Current unapplied database change
+
+`supabase/migrations/20261026000800_phase_05_server_snapshot_notifications.sql` is a forward migration after the existing Phase 05 migration and before Phase 06. It removes the obsolete browser-callable snapshot RPC, creates versioned word policies and immutable submission-evidence tables, adds nullable compatibility columns for pre-existing versions, and grants the replacement finalization function only to `service_role`. It has not been applied locally or to any hosted project.
+
+Rollback before production traffic is limited to reverting application code and dropping the new function/evidence/policy objects only after confirming no finalized version depends on them. Once evidence rows exist, preserve them and use a forward corrective migration; do not drop immutable submission evidence.
 
 ## Stop condition
 

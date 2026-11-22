@@ -8,14 +8,14 @@ Implement server-authorized, retrieval-assisted caption drafting with explicit s
 
 - Phases 2–5 complete and the core caption/approval workflow judged reliable.
 - O-016, O-017, O-018, and affected O-023 retention choices resolved.
-- Separately authorized organization-owned OpenAI development project/credentials; no browser access to the key.
+- Separately authorized organization-owned Gemini development project/credentials; no browser access to the key. Gemini Free is synthetic-development-only.
 
 ## In-scope work
 
 - Organization, campaign, and personal style profiles with explicit rules, versions, ownership, consent, and authorized curation.
 - Curated approved/published sample selection; drafts/rejected captions excluded by default.
 - Authorized, metadata-filtered embeddings and `pgvector` retrieval limited to visible organization/project/campaign/author scope.
-- Server-only OpenAI Responses API adapter for the specified initial actions and three-direction generation.
+- Server-only Gemini API adapter for the specified initial actions and three-direction generation.
 - Versioned prompt templates and validated structured output containing variants, tone, hook, body, CTA, hashtags, assumptions, and warnings.
 - User confirmation of brief, visible disclosure of influencing style profile/examples, editable draft/suggestion insertion, and no automatic submission.
 - Per-user/per-organization quotas, rate limiting, usage/provenance logging, feedback/final disposition, cached embeddings, and evaluation fixtures.
@@ -31,7 +31,7 @@ Implement server-authorized, retrieval-assisted caption drafting with explicit s
 ## Expected files and components
 
 - Migrations/RLS for style profiles/rules/samples, embeddings, generation runs, feedback, quotas/usage, and audit links.
-- Server-only OpenAI, embedding, retrieval, prompt, schema-validation, quota, and provenance modules.
+- Server-only Gemini, embedding, retrieval, prompt, schema-validation, quota, and provenance modules.
 - AI assistant UI for brief confirmation, action/profile selection, streamed/complete variants, influence disclosure, insertion as draft/suggestion, feedback, and errors.
 - Background embedding path using the accepted Supabase job/Edge Function approach if needed.
 - Mocked unit/integration tests and versioned evaluation fixtures/reports.
@@ -55,7 +55,7 @@ Implement server-authorized, retrieval-assisted caption drafting with explicit s
 - AI content is visibly identified and enters as editable draft/suggestion only; it cannot submit, approve, publish, or impersonate.
 - Model, prompt/profile versions, sample IDs, output, editor, usage, and disposition are recorded according to O-018/O-023.
 - Evaluation fixtures score factual consistency, style, CTA, limits, avoided phrases, and human acceptance/edit distance against accepted thresholds.
-- OpenAI outage/quota exhaustion leaves manual drafting and approval usable.
+- Gemini outage/quota exhaustion leaves manual drafting and approval usable.
 
 ## Tests and verification commands
 

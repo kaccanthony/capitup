@@ -57,6 +57,15 @@ describe("Phase 02 security boundaries", () => {
     expect(migration).not.toMatch(/username/i);
   });
 
+  it("claims an invitation through a single locked record target", async () => {
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("into v_claim");
+    expect(migration).toContain("v_allowlist := v_claim.allowlist;");
+    expect(migration).toContain("v_membership := v_claim.membership;");
+    expect(migration).not.toContain("into v_allowlist, v_membership");
+  });
+
   it("derives protected-denial and sign-out audit actors from auth.uid", async () => {
     const migration = await readFile(migrationPath, "utf8");
     const authorization = await readFile(

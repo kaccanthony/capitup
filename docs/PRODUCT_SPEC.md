@@ -20,13 +20,13 @@ Build the first version as a **private, organization-only web application** usin
 
 Do **not** add a separate Express server for the MVP. Next.js route handlers are enough for authentication callbacks, AI requests, Notion webhooks, and ordinary business logic. Add an Express service on Render or Fly.io only if the project later requires a long-running custom WebSocket server, heavy background processing, or an API used by several separate clients.
 
-Liveblocks should own the active collaborative document, live cursors, text selections, and anchored comment threads. Supabase should own users, permissions, workflow state, immutable submitted versions, approvals, audit records, and general application notifications. This means the app does not need to maintain its own WebSocket service for the recommended managed architecture.
+Liveblocks owns the active Yjs document, live cursors, text selections, presence, and provider snapshots. Supabase owns users, permissions, durable comments/replies/mentions/resolutions, suggestions, reactions, workflow state, immutable submitted versions, approvals, audit records, and application notifications. Durable text anchors retain Yjs-relative positions so they continue to follow nearby edits. The app does not maintain its own WebSocket service.
 
 The app should be the source of truth for captions, versions, comments, and approval history. Notion should initially be the source of truth for the organization calendar and project/event metadata. Sync only agreed fields between them to avoid two systems overwriting the same caption.
 
 ## 2. The refined product idea
 
-CaptionFlow is a centralized workspace where a publicity team can:
+CapItUp is a centralized workspace where a publicity team can:
 
 1. Import or create a publicity request.
 2. Assign one or more writers.
@@ -132,10 +132,14 @@ Do not hard-code one global hierarchy. Each project chooses a workflow template,
 
 ### 5.1 Standard publicity workflow
 
+Publicity Director review is mandatory for every standard caption. A standard caption cannot skip directly to final approval.
+
 1. Writer submits a specific caption version.
 2. Publicity Director reviews it.
 3. Publicity Director either recommends it or requests changes.
 4. PRO gives final approval or requests changes.
+
+A PRO-authored caption cannot be independently self-approved by its author. It must use one frozen independent-approval path: Publicity Director only, an existing `executive` with an explicit President designation, or unanimous active Junior Officers. A President designation is authorization data separate from a display title; the website owner may grant or revoke it, while a Publicity Director may revoke it. Each change requires a reason and immutable audit record. The unanimous-Junior-Officer snapshot includes every active `junior_officer` at workflow creation; a snapshot member who later becomes suspended, expired, resigns, or is marked temporarily unavailable by a Publicity Director or PRO with an audit reason does not block completion.
 
 ### 5.2 Project-led workflow
 
@@ -168,7 +172,7 @@ An override must never silently impersonate another approver.
 - Editing caption text creates a new immutable version.
 - A content edit after approval invalidates approvals for the previous version.
 - A new version normally restarts the workflow at the earliest required review step.
-- Metadata-only changes, such as correcting an internal tag, may be configured not to restart approval.
+- Changing only the scheduled publication time preserves existing approval. Any change to caption content, title, content kind, tags, destination platforms, deliverable links, content assignments, special-case settings, or the evaluated policy invalidates the affected approval and moves the content into a new review state. Historical versions and decisions remain immutable.
 - The final approved text is locked. Further changes require creating another version and reopening approval.
 - Use optimistic concurrency with a version number or `updated_at` check to prevent silent overwrites.
 
@@ -293,9 +297,9 @@ Use this state model:
 5. **Review lock** — ordinary writers cannot silently change the submitted snapshot. They may work in a new draft or respond through comments/suggestions according to workflow policy.
 6. **Approved snapshot** — final approval always references the immutable Supabase version, not the moving live document.
 
-Comments should attach to selected text ranges rather than visual “line 12,” because lines move when the editor width or content changes. Store the provider thread ID, document ID, author, status, timestamps, and workflow visibility in Supabase where needed for authorization and audit. Yjs-relative positions or the collaboration provider’s native anchors keep the thread attached as nearby content changes.
+Comments attach to selected text ranges rather than visual “line 12,” because lines move when the editor width or content changes. Store the durable thread body, document ID, author, status, timestamps, mentions, workflow visibility, and encoded Yjs-relative positions in Supabase. The relative positions keep the thread attached as nearby content changes.
 
-The easiest complete implementation is Liveblocks with its TipTap/Yjs integration. It supports synchronized documents, live cursors, selection-anchored comments, mentions, and related notifications. For a self-hosted route, run TipTap’s open-source Hocuspocus/Yjs server as a persistent service on Render or Fly.io. Full TipTap Tracked Changes and its accept/reject suggestion UI are paid add-ons; if that cost is not approved, implement a narrower suggestion record containing selected range, original text, proposed replacement, author, and `pending/accepted/rejected` state.
+Use managed Liveblocks with its TipTap/Yjs integration for synchronized documents, presence, cursors, selections, reconnection, and exact provider snapshots. Supabase stores durable comments, mentions, resolutions, suggestions, reactions, and notifications. Full TipTap Tracked Changes is not required; use the narrower suggestion record selected by A-026, containing the anchored range, original text, proposed replacement, author, and review state.
 
 ### 6.6 Unicode Style Converter
 
@@ -459,7 +463,7 @@ Filter by:
 
 ### 6.9 Notifications
 
-Start with in-app and email notifications for:
+Start with in-app notifications for:
 
 - New assignment
 - Mention or reply
@@ -468,6 +472,8 @@ Start with in-app and email notifications for:
 - Final approval
 - Upcoming deadline
 - Director override
+
+Email notification delivery is deferred until an email provider, sender domain, authentication, and delivery policy are separately configured. In-app notification records remain the durable source of notification state.
 
 Messenger integration is outside the MVP unless an official organization-approved integration is available.
 
@@ -504,7 +510,8 @@ Adjust these to the organization’s actual branding before implementation.
 Use a centered glassmorphic login card over a subtle abstract gradient. Keep the form simple because this is an invitation-only app:
 
 - “Continue with Institutional Account” as the primary action
-- Optional institutional email magic link as fallback
+- Google and Microsoft sign-in as the primary institutional-account choices
+- A collapsed "Use email instead" control in the lower part of the card. It reveals an institutional email/password fallback only when the member chooses it; it does not send a magic link.
 - No open “Create account” flow
 - A clear “This workspace is limited to authorized members” message
 - Generic access-denied messages that do not reveal whether an email is on the membership list
@@ -562,7 +569,7 @@ flowchart TD
 | Concern | Owner |
 |---|---|
 | Live characters, cursors, selections, editor presence | Liveblocks + Yjs |
-| Anchored editor comments and mentions | Liveblocks/TipTap collaboration layer |
+| Durable anchored comments, replies, mentions, suggestions, and resolutions | Supabase PostgreSQL with Yjs-relative anchors |
 | User identity and room authorization | Supabase Auth + server-issued room access |
 | Post metadata, assignments, tags, and deliverables | Supabase PostgreSQL |
 | Immutable submitted and approved versions | Supabase PostgreSQL |
@@ -689,11 +696,9 @@ Never store raw integration secrets in ordinary exposed tables. Use deployment s
 
 ### 11.1 Recommended login model
 
-Use Supabase Auth with one of these, in order of preference:
+Use Supabase Auth with institutional Google OAuth and Microsoft OAuth as the primary sign-in methods. Provide an email/password fallback only when either OAuth service is unavailable or a member deliberately chooses the collapsed lower-page email option. Do not use email magic links as a fallback.
 
-1. Institutional Google or Microsoft OAuth, if the school controls those accounts
-2. Passwordless magic link to an institutional email
-3. Email/password only if institutional SSO is unavailable
+The fallback must use an approved institutional email, a confirmed email where Supabase requires confirmation, and the same allowlist/current-membership checks as OAuth. It is a recovery path, not a way to self-register or bypass the invitation boundary.
 
 Before allowing user creation, check the normalized verified email against `member_allowlist`. Supabase provides a Before User Created hook that can reject unauthorized signups. Public self-registration should remain disabled.
 
@@ -705,7 +710,7 @@ A blanket 24-hour lock on an email after five attempts is possible but creates a
 
 Use this safer design:
 
-- Prefer OAuth or magic links so there is no password to brute-force.
+- Prefer Google or Microsoft OAuth. Apply equivalent anti-brute-force controls to the email/password fallback.
 - Apply Supabase’s built-in Auth rate limits.
 - Track denied access attempts using an email hash plus IP/device risk signals.
 - Show the same generic result for unknown and unauthorized identities.

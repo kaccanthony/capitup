@@ -10,19 +10,7 @@ export const publicEnvironmentSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: configuredText,
 });
 
-export const serverEnvironmentSchema = z.object({
-  SUPABASE_SERVICE_ROLE_KEY: configuredText,
-  LIVEBLOCKS_SECRET_KEY: configuredText,
-  OPENAI_API_KEY: configuredText,
-  NOTION_API_TOKEN: configuredText,
-  NOTION_CALENDAR_DATABASE_ID: configuredText,
-  NOTION_CALENDAR_DATA_SOURCE_ID: configuredText,
-  NOTION_WEBHOOK_SECRET: configuredText,
-  APP_ENCRYPTION_KEY: configuredText,
-});
-
 export type PublicEnvironment = z.output<typeof publicEnvironmentSchema>;
-export type ServerEnvironment = z.output<typeof serverEnvironmentSchema>;
 export type EnvironmentInput = Record<string, string | undefined>;
 
 export class EnvironmentValidationError extends Error {
@@ -37,7 +25,7 @@ export class EnvironmentValidationError extends Error {
   }
 }
 
-function parseEnvironment<TSchema extends z.ZodType>(
+export function parseEnvironment<TSchema extends z.ZodType>(
   schema: TSchema,
   input: EnvironmentInput,
 ): z.output<TSchema> {
@@ -60,10 +48,4 @@ export function parsePublicEnvironment(
   input: EnvironmentInput,
 ): PublicEnvironment {
   return parseEnvironment(publicEnvironmentSchema, input);
-}
-
-export function parseServerEnvironment(
-  input: EnvironmentInput,
-): ServerEnvironment {
-  return parseEnvironment(serverEnvironmentSchema, input);
 }
