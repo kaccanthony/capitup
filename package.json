@@ -26,6 +26,7 @@
     "@liveblocks/node": "^3.24.5",
     "@liveblocks/react": "^3.24.5",
     "@liveblocks/react-tiptap": "^3.24.5",
+    "@marsidev/react-turnstile": "^1.6.3",
     "@notionhq/client": "^5.31.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",

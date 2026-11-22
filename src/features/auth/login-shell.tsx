@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import {
   Building2,
   Check,
@@ -21,6 +22,7 @@ const initialState: SignInFormState = { status: "idle" };
 const statusMessages: Record<SignInFormState["status"], string | null> = {
   idle: null,
   invalid: "Sign-in failed. Check your email and password.",
+  captcha: "Verification expired. Complete the check and try again.",
   denied:
     "This account is not on the active organization allowlist. Contact an administrator.",
   unavailable:
@@ -33,6 +35,16 @@ export function LoginShell({ nextPath = "/" }: { nextPath?: string }) {
     initialState,
   );
   const statusMessage = statusMessages[state.status];
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaMessage, setCaptchaMessage] = useState("");
+  const turnstileRef = useRef<TurnstileInstance>(null);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  const submitPassword = (formData: FormData) => {
+    action(formData);
+    setCaptchaToken("");
+    turnstileRef.current?.reset();
+  };
 
   return (
     <main className="login-page" aria-labelledby="login-title">
@@ -96,8 +108,9 @@ export function LoginShell({ nextPath = "/" }: { nextPath?: string }) {
             <summary className="cursor-pointer text-sm font-medium">
               Use email instead
             </summary>
-            <form action={action} className="mt-4 space-y-4">
+            <form action={submitPassword} className="mt-4 space-y-4">
               <input type="hidden" name="next" value={nextPath} />
+              <input type="hidden" name="captchaToken" value={captchaToken} />
               <div>
                 <label
                   htmlFor="institutional-email"
@@ -132,10 +145,56 @@ export function LoginShell({ nextPath = "/" }: { nextPath?: string }) {
                   required
                 />
               </div>
-              <Button className="w-full" size="lg" disabled={pending}>
+              {siteKey ? (
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={(token) => {
+                    setCaptchaToken(token);
+                    setCaptchaMessage("");
+                  }}
+                  onExpire={() => {
+                    setCaptchaToken("");
+                    setCaptchaMessage(
+                      "Verification expired. Complete the check again.",
+                    );
+                  }}
+                  onError={() => {
+                    setCaptchaToken("");
+                    setCaptchaMessage(
+                      "Verification could not load. Retry the check.",
+                    );
+                  }}
+                />
+              ) : (
+                <p className="text-sm" role="status">
+                  Email sign-in verification is not configured.
+                </p>
+              )}
+              <Button
+                className="w-full"
+                size="lg"
+                disabled={pending || !captchaToken}
+              >
                 <Building2 aria-hidden="true" data-icon="inline-start" />
                 {pending ? "Signing in…" : "Sign in with email"}
               </Button>
+              {captchaMessage && (
+                <div role="alert" className="text-sm">
+                  {captchaMessage}{" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      setCaptchaToken("");
+                      setCaptchaMessage("");
+                      turnstileRef.current?.reset();
+                    }}
+                  >
+                    Retry verification
+                  </button>
+                </div>
+              )}
             </form>
           </details>
 

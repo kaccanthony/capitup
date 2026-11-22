@@ -25,6 +25,14 @@ export async function POST(
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const {
+    data: { user },
+    error: userError,
+  } = await client.auth.getUser();
+  if (userError || !user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const { data: item, error: itemError } = await client
     .from("content_items")
     .select("project_id")

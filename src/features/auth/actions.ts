@@ -8,7 +8,7 @@ import { getPublicEnvironment } from "@/lib/env/client";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type SignInFormState = {
-  status: "idle" | "invalid" | "denied" | "unavailable";
+  status: "idle" | "invalid" | "captcha" | "denied" | "unavailable";
 };
 
 export async function signInWithPassword(
@@ -18,11 +18,12 @@ export async function signInWithPassword(
   const parsed = signInRequestSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
+    captchaToken: formData.get("captchaToken"),
     next: formData.get("next") || undefined,
   });
 
   if (!parsed.success) {
-    return { status: "invalid" };
+    return { status: formData.get("captchaToken") ? "invalid" : "captcha" };
   }
 
   const client = await createServerSupabaseClient();
@@ -34,6 +35,7 @@ export async function signInWithPassword(
   const { error } = await client.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
+    options: { captchaToken: parsed.data.captchaToken },
   });
   if (error) return { status: "invalid" };
 

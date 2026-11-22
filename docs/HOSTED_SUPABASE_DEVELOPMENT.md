@@ -18,11 +18,14 @@ Create `.env.local` only after a separate hosted development project exists:
 
 ```dotenv
 NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=YOUR-CLOUDFLARE-TURNSTILE-SITE-KEY
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR-DEVELOPMENT-PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR-DEVELOPMENT-PUBLISHABLE-KEY
 ```
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` remains a compatibility fallback for older projects. Prefer the publishable key for new projects.
+
+Create a Cloudflare Turnstile widget for each app origin, including localhost for local testing. Set its public site key as `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in the matching app environment. Configure the corresponding secret only in Supabase **Authentication → Bot and Abuse Protection**. The email/password form requires a completed check and sends its token to Supabase; Google sign-in does not use the widget. Verify success, expiry, and rejected tokens against the hosted Auth project.
 
 Collaborative snapshot finalization requires `SUPABASE_SERVICE_ROLE_KEY` in the Next.js server environment after the Phase 05 hardening migration is applied. Store it only in `.env.local` for an authorized development project or the hosting provider's server secret store. Never add a `NEXT_PUBLIC_` prefix, print it, or reuse the privileged client for ordinary reads/writes.
 
@@ -37,7 +40,7 @@ Perform these steps only after the project owner explicitly authorizes remote de
 5. Configure Google OAuth as the primary provider under A-021. Register the exact Supabase Auth callback URL in Google, then place the provider client ID and secret only in the Supabase Auth provider settings. Do not place provider secrets in `.env.local`, tracked files, browser variables, or application code.
 6. Enable email/password only as the deliberately disclosed fallback. Keep email confirmation enabled where the hosted project requires it, disable public self-registration, and do not enable passwordless email magic links. This path still depends on the exact allowlist/domain rule in O-002.
 7. Record the exact institutional domain/identity rules under O-002 before inserting identity-requirement rows or real invitations.
-8. Configure Supabase Auth rate limits and the selected CAPTCHA provider/thresholds under O-025. The form accepts a future CAPTCHA token but no provider is enabled offline.
+8. Configure Supabase Auth rate limits under O-025 and enable Cloudflare Turnstile in Bot and Abuse Protection. The app requires its public site key for email/password sign-in.
 9. Bootstrap the first organization and `org_admin` invitation with the reviewed one-time SQL in [FIRST_ADMIN_BOOTSTRAP.md](FIRST_ADMIN_BOOTSTRAP.md). Use the exact normalized full email; never authorize from a username or local-part match.
 10. Sign in through each selected provider using a synthetic, allowlisted identity. The Before User Created hook admits only a pending allowlist record; the callback then binds the membership to the immutable Supabase user ID.
 11. Run the database/RLS test file against the isolated development project and record its results before considering Phase 02 database behavior verified.
