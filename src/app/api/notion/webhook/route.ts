@@ -10,9 +10,6 @@ const unavailable = () =>
   Response.json({ error: "Integration unavailable." }, { status: 503 });
 
 export async function POST(request: Request) {
-  const environment = getServerEnvironment();
-  if (!environment.NOTION_WEBHOOK_SECRET) return unavailable();
-
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (!Number.isFinite(contentLength) || contentLength > 1_000_000) {
     return Response.json({ error: "Invalid webhook." }, { status: 400 });
@@ -22,6 +19,12 @@ export async function POST(request: Request) {
   if (rawBody.length > 1_000_000) {
     return Response.json({ error: "Invalid webhook." }, { status: 400 });
   }
+
+  // TEMPORARY DEBUG: Remove after capturing the Notion verification request; this logs its secret token.
+  console.log("Notion webhook raw body:", rawBody);
+
+  const environment = getServerEnvironment();
+  if (!environment.NOTION_WEBHOOK_SECRET) return unavailable();
 
   // Notion's initial subscription verification has no event signature.
   let verification: unknown;
