@@ -20,9 +20,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid webhook." }, { status: 400 });
   }
 
-  // TEMPORARY DEBUG: Remove after capturing the Notion verification request; this logs its secret token.
-  console.log("Notion webhook raw body:", rawBody);
-
   const environment = getServerEnvironment();
   if (!environment.NOTION_WEBHOOK_SECRET) return unavailable();
 
