@@ -7,6 +7,7 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { OrganizationRole } from "@/types/database";
 import type { NotionFieldMappings } from "@/features/notion/contracts";
+import { classifyApplyImportFailure } from "@/features/notion/import-diagnostics";
 import {
   notionConnectionInputSchema,
   notionFieldMappingsSchema,
@@ -495,7 +496,16 @@ export async function applyNotionProjectImport(input: {
   payloadHash: string;
 }) {
   const client = createServiceRoleSupabaseClient();
-  if (!client) throw new NotionIntegrationAccessError();
+  if (!client) {
+    console.error("[NOTION] apply import unavailable", {
+      reason: classifyApplyImportFailure({
+        clientAvailable: false,
+        rpcFailed: false,
+        hasResultRow: false,
+      }),
+    });
+    throw new NotionIntegrationAccessError();
+  }
   const { data, error } = await client.rpc(
     "apply_notion_posting_metadata_import",
     {
@@ -512,8 +522,22 @@ export async function applyNotionProjectImport(input: {
       p_payload_hash: input.payloadHash,
     },
   );
-  if (error || !data?.[0]) throw new NotionIntegrationAccessError();
-  return data[0];
+  const result = data?.[0];
+  const reason = classifyApplyImportFailure({
+    clientAvailable: true,
+    rpcFailed: Boolean(error),
+    hasResultRow: Boolean(result),
+    databaseMessage: error?.message,
+  });
+  if (reason) {
+    console.error("[NOTION] apply import unavailable", {
+      reason,
+      databaseCode: error?.code ?? null,
+    });
+    throw new NotionIntegrationAccessError();
+  }
+  if (!result) throw new NotionIntegrationAccessError();
+  return result;
 }
 
 export async function recordNotionSyncFailure(input: {
