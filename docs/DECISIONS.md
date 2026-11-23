@@ -185,7 +185,7 @@
 
 ### A-029 - Notion posting calendar and manual caption exchange
 
-- **Status:** Accepted on 2026-11-22; resolves O-019, O-020, and O-021. Implementation remains pending.
+- **Status:** Accepted on 2026-11-22; resolves O-019, O-020, and O-021. Caption exchange and viewer clauses were superseded by A-038; historical field-ownership details are retained for context.
 - **Calendar surface:** The existing calendar is a calendar view of the Notion database **2627 Postings New** (database `3e6e30de-b33c-804c-9228-deea599d1d85`, data source `0c2e30de-b33c-8396-a4c8-878f7225124b`), grouped by **Posting Date & Time**. It is not a separate Notion Calendar account calendar. Restrict the internal integration to this shared data source; do not add a Google or Microsoft Calendar dependency for it.
 - **Record identity:** Each Notion row represents a posting/content item, not a CapItUp project. Link `notion_page_id` to one `content_item_id` within an explicitly selected project; do not infer a project from the row title or event label. Preserve existing Notion rows and their templates. The current project-level importer must be migrated before activating this data source.
 - **Field ownership:** Import `Post ID` (title) as the posting title, `Posting Date & Time` (date, nullable, Asia/Manila display) as the schedule, and `Deliverable Deadline` (date, nullable) as a reference deadline. Import `Event Name` (select) as an explicit event label only if a matching controlled project/event mapping exists. Keep `Assignee`, `Assigner`, `Priority`, `Deliverable STATUS`, `Post STATUS`, `SHOOTING DAY`, `Parent item`, `Sub-item`, and `🖌️ Creatives Non-Post Tasks` Notion-owned and untouched. The app owns caption text, version/approval history, and the manual export of `Caption STATUS`; map only to existing Notion options (`NOT STARTED`, `WRITING`, `FOR REVIEW`, `NEEDS REVISION`, `APPROVED`, `PUBLISHED`, `ON HOLD`, `NOT NEEDED`, `CANCELLED`) with an explicit conversion table. Never equate `Post STATUS` with approval. Resolve and pin actual Notion property IDs/types from the data source API during setup; reject missing or changed fields instead of writing by a guessed ID.
@@ -244,6 +244,14 @@
 - **Status:** Accepted on 2026-11-23; resolves O-028.
 - **Decision:** The phase numbering is finalized as: Phase 0 (repository foundation), Phase 1 (UI foundation), Phase 2 (auth/membership), Phase 3 (projects/content), Phase 4 (approval workflow), Phase 5 (realtime collaboration), Phase 6 (AI assistance), Phase 7 (Notion integration), Phase 8 (hardening/pilot). Earlier `phase-00-repository-foundation.md` and `phase-01-ui-foundation.md` in `harness/build/` are retained as historical references; `PLANS.md` reflects the canonical sequence. No renaming of completed phase files.
 - **Rationale:** The user-directed Phase 01 foundation overlapped the earlier Phase 0 scope. The canonical sequence now matches the actual implementation order and `PLANS.md` is the single source of truth.
+
+### A-038 - Notion metadata-only ownership and CapItUp URL
+
+- **Status:** Accepted on 2026-11-23; supersedes A-029's caption exchange and viewer-placement clauses.
+- **Ownership:** Notion owns posting metadata (title, posting schedule, platform, assignees, and schedule status). CapItUp/Supabase/Liveblocks own caption text, immutable versions, collaboration, and approvals. Never read or write caption text through Notion sync.
+- **Link:** Notion stores exactly one `Cap-It-Up URL` property. CapItUp writes only that URL through an explicit retryable link-sync action after a Notion posting row is bound to one CapItUp content item. `/open` routes authorized editors to the editor and viewers to the read-only view with Copy Caption. A link-sync failure never blocks local editing or approval.
+- **Retired behavior:** Remove caption push/pull reconciliation, caption hashes, caption rich-text conversion/chunking, and any Notion caption property dependency. Existing Notion caption values, if present, are left untouched by this code; hosted cleanup requires a separately authorized Notion write.
+- **Rationale:** One system owns each kind of data. Notion remains a posting-metadata surface while CapItUp remains the only caption and approval workspace.
 
 ## Open decisions
 

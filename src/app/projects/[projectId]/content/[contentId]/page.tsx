@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink, RefreshCw, Upload, Download, AlertTriangle } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { redirect } from "next/navigation";
 import {
   addDeliverableAction,
@@ -23,37 +23,27 @@ import {
   ProjectWorkspace,
   secondaryButtonClassName,
 } from "@/features/projects/project-workspace";
-import {
-  pushCaptionToNotionAction,
-  pullCaptionFromNotionAction,
-  getNotionSyncStatus,
-  refreshNotionSyncStatusAction,
-} from "@/features/notion/manual-sync-actions";
+import { syncCapItUpLinkAction } from "@/features/notion/link-sync-actions";
 
 export const metadata: Metadata = { title: "Content record" };
 
 export default async function ContentRecordPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string; contentId: string }>;
+  searchParams: Promise<{ notice?: string }>;
 }) {
   const { projectId, contentId } = await params;
+  const { notice } = await searchParams;
   let item: Awaited<ReturnType<typeof getAccessibleContentItem>>;
   let project: Awaited<ReturnType<typeof getAccessibleProject>>;
   let taxonomy: Awaited<ReturnType<typeof getControlledTaxonomy>>;
-  let collaboration: Awaited<ReturnType<typeof getCollaborationWorkspace>> | null = null;
-  let aiStyleProfiles: Awaited<ReturnType<typeof listVisibleAiStyleProfiles>> = [];
-  let notionSyncStatus: Awaited<ReturnType<typeof getNotionSyncStatus>> = {
-    error: "Not loaded",
-    hasNotionLink: false,
-    lastExportHash: null,
-    lastImportHash: null,
-    localCaptionHash: null,
-    remoteCaptionHash: null,
-    needsPush: false,
-    needsPull: false,
-    conflict: false,
-  };
+  let collaboration: Awaited<
+    ReturnType<typeof getCollaborationWorkspace>
+  > | null = null;
+  let aiStyleProfiles: Awaited<ReturnType<typeof listVisibleAiStyleProfiles>> =
+    [];
 
   try {
     [item, project, taxonomy] = await Promise.all([
@@ -68,10 +58,9 @@ export default async function ContentRecordPage({
   if (!item || !project) redirect("/access-denied");
 
   try {
-    [collaboration, aiStyleProfiles, notionSyncStatus] = await Promise.all([
+    [collaboration, aiStyleProfiles] = await Promise.all([
       getCollaborationWorkspace(item),
       listVisibleAiStyleProfiles(),
-      getNotionSyncStatus(item.organizationId, projectId, contentId),
     ]);
   } catch {
     redirect("/access-denied");
@@ -93,6 +82,22 @@ export default async function ContentRecordPage({
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)]">
         <div className="space-y-5">
+          {notice === "notion-link-sync-failed" && (
+            <p role="status" className="surface-panel text-sm text-amber-100">
+              Notion link sync failed. Your CapItUp edits and approvals are
+              unchanged. Retry when Notion is available.
+            </p>
+          )}
+          {notice === "notion-link-synced" && (
+            <p role="status" className="surface-panel text-sm text-emerald-100">
+              Cap-It-Up link synced to Notion.
+            </p>
+          )}
+          {notice === "notion-link-forbidden" && (
+            <p role="status" className="surface-panel text-sm text-amber-100">
+              You need editing access to sync this link.
+            </p>
+          )}
           <section
             className="surface-panel"
             aria-labelledby="content-metadata-title"
@@ -228,7 +233,7 @@ export default async function ContentRecordPage({
               </ul>
             )}
 
-            {item.canEdit && (
+            {item.canSyncNotionLink && (
               <form
                 action={addDeliverableAction}
                 className="mt-6 space-y-3 border-t border-white/8 pt-5"
@@ -357,99 +362,29 @@ export default async function ContentRecordPage({
             </p>
           </section>
 
-          {notionSyncStatus && "hasNotionLink" in notionSyncStatus && notionSyncStatus.hasNotionLink && (
-            <section className="surface-panel" aria-labelledby="notion-sync-title">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="eyebrow">Notion synchronization</p>
-                  <h2 id="notion-sync-title" className="mt-2 text-lg font-semibold">
-                    Manual caption exchange
-                  </h2>
-                </div>
-                <form action={refreshNotionSyncStatusAction} className="flex items-center gap-2">
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="contentItemId" value={item.id} />
-                  <button
-                    className={secondaryButtonClassName}
-                    type="submit"
-                    aria-label="Refresh sync status"
-                  >
-                    <RefreshCw className="size-4" aria-hidden="true" />
-                  </button>
-                </form>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                Push the latest approved caption to Notion or pull changes from the
-                Notion page. Only explicit clicks trigger sync; no background jobs.
-              </p>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3 text-xs">
-                  <p className="font-medium">Local (CapItUp)</p>
-                  <p className="mt-1 font-mono text-[var(--text-muted)]">
-                    {notionSyncStatus.localCaptionHash?.slice(0, 16) ?? "No approved version"}
-                  </p>
-                  <p className="mt-1 text-[var(--text-muted)]">
-                    Last pushed: {notionSyncStatus.lastExportHash?.slice(0, 16) ?? "Never"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3 text-xs">
-                  <p className="font-medium">Remote (Notion)</p>
-                  <p className="mt-1 font-mono text-[var(--text-muted)]">
-                    {notionSyncStatus.remoteCaptionHash?.slice(0, 16) ?? "No caption content"}
-                  </p>
-                  <p className="mt-1 text-[var(--text-muted)]">
-                    Last pulled: {notionSyncStatus.lastImportHash?.slice(0, 16) ?? "Never"}
-                  </p>
-                </div>
-              </div>
-
-              {notionSyncStatus.conflict && (
-                <div className="mt-4 rounded-xl border border-amber-200/30 bg-amber-50/10 p-3">
-                  <div className="flex items-center gap-2 text-sm text-amber-200">
-                    <AlertTriangle className="size-4" aria-hidden="true" />
-                    <span>Local and remote have both changed since last sync. Pull to review, then push after reconciliation.</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 flex flex-wrap gap-3">
-                <form action={pushCaptionToNotionAction} className="flex items-center gap-2">
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="contentItemId" value={item.id} />
-                  <button
-                    className={primaryButtonClassName}
-                    type="submit"
-                    disabled={!notionSyncStatus.needsPush && !notionSyncStatus.conflict}
-                    aria-disabled={!notionSyncStatus.needsPush && !notionSyncStatus.conflict}
-                  >
-                    <Upload className="size-4 mr-1.5" aria-hidden="true" />
-                    Push to Notion
-                  </button>
-                  {!notionSyncStatus.needsPush && !notionSyncStatus.conflict && (
-                    <span className="text-xs text-[var(--text-muted)]">Up to date</span>
-                  )}
-                </form>
-
-                <form action={pullCaptionFromNotionAction} className="flex items-center gap-2">
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="contentItemId" value={item.id} />
-                  <button
-                    className={secondaryButtonClassName}
-                    type="submit"
-                    disabled={!notionSyncStatus.needsPull}
-                    aria-disabled={!notionSyncStatus.needsPull}
-                  >
-                    <Download className="size-4 mr-1.5" aria-hidden="true" />
-                    Pull from Notion
-                  </button>
-                  {!notionSyncStatus.needsPull && (
-                    <span className="text-xs text-[var(--text-muted)]">Up to date</span>
-                  )}
-                </form>
-              </div>
-            </section>
-          )}
+          <section
+            className="surface-panel"
+            aria-labelledby="notion-link-title"
+          >
+            <p className="eyebrow">Notion metadata record</p>
+            <h2 id="notion-link-title" className="mt-2 text-lg font-semibold">
+              Cap-It-Up link
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              Notion retains posting metadata. Caption text and approvals stay
+              in CapItUp. Syncing the link never sends caption content to
+              Notion.
+            </p>
+            {item.canEdit && (
+              <form action={syncCapItUpLinkAction} className="mt-4">
+                <input type="hidden" name="projectId" value={project.id} />
+                <input type="hidden" name="contentItemId" value={item.id} />
+                <button className={secondaryButtonClassName} type="submit">
+                  Retry Link Sync
+                </button>
+              </form>
+            )}
+          </section>
         </div>
       </div>
     </ProjectWorkspace>

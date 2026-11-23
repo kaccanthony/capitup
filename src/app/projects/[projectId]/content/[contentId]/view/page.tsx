@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ExternalLink } from "lucide-react";
-import { CollaborationWorkspace } from "@/features/collaboration/collaboration-workspace";
 import { getCollaborationWorkspace } from "@/features/collaboration/data";
-import { getAccessibleContentItem, getAccessibleProject } from "@/features/projects/data";
+import {
+  getAccessibleContentItem,
+  getAccessibleProject,
+} from "@/features/projects/data";
 import { ProjectWorkspace } from "@/features/projects/project-workspace";
+import { CopyCaptionButton } from "@/features/projects/copy-caption-button";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Caption viewer" };
 
-async function getLatestCaptionContent(contentItemId: string): Promise<{ plainText: string; editorJson: unknown } | null> {
+async function getLatestCaptionContent(
+  contentItemId: string,
+): Promise<{ plainText: string; editorJson: unknown } | null> {
   const client = await createServerSupabaseClient();
   if (!client) return null;
 
@@ -79,11 +84,17 @@ export default async function CaptionViewerPage({
       }
     >
       <div className="space-y-5 max-w-4xl">
-        <section className="surface-panel" aria-labelledby="viewer-metadata-title">
+        <section
+          className="surface-panel"
+          aria-labelledby="viewer-metadata-title"
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="eyebrow">Caption record</p>
-              <h2 id="viewer-metadata-title" className="mt-2 text-xl font-semibold">
+              <h2
+                id="viewer-metadata-title"
+                className="mt-2 text-xl font-semibold"
+              >
                 Metadata
               </h2>
             </div>
@@ -132,7 +143,9 @@ export default async function CaptionViewerPage({
                   <dt className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">
                     Latest submitted version
                   </dt>
-                  <dd className="mt-2 font-semibold">Version {latestVersion.versionNumber}</dd>
+                  <dd className="mt-2 font-semibold">
+                    Version {latestVersion.versionNumber}
+                  </dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">
@@ -150,18 +163,29 @@ export default async function CaptionViewerPage({
           </dl>
         </section>
 
-        <section className="surface-panel" aria-labelledby="viewer-caption-title">
+        <section
+          className="surface-panel"
+          aria-labelledby="viewer-caption-title"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="eyebrow">Approved content</p>
-              <h2 id="viewer-caption-title" className="mt-2 text-xl font-semibold">
+              <h2
+                id="viewer-caption-title"
+                className="mt-2 text-xl font-semibold"
+              >
                 Caption
               </h2>
             </div>
             {latestVersion && (
-              <span className="status-badge status-approved">
-                Version {latestVersion.versionNumber}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="status-badge status-approved">
+                  Version {latestVersion.versionNumber}
+                </span>
+                {captionContent?.plainText && (
+                  <CopyCaptionButton caption={captionContent.plainText} />
+                )}
+              </div>
             )}
           </div>
           <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
@@ -188,7 +212,10 @@ export default async function CaptionViewerPage({
         </section>
 
         {latestVersion && (
-          <section className="surface-panel" aria-labelledby="viewer-evidence-title">
+          <section
+            className="surface-panel"
+            aria-labelledby="viewer-evidence-title"
+          >
             <h2 id="viewer-evidence-title" className="text-lg font-semibold">
               Submission evidence
             </h2>
@@ -249,7 +276,9 @@ export default async function CaptionViewerPage({
                         key={destination.publicationChannelId}
                         className="rounded-lg border border-white/8 px-3 py-2 text-xs"
                       >
-                        <span className="font-semibold">{destination.label}</span>{" "}
+                        <span className="font-semibold">
+                          {destination.label}
+                        </span>{" "}
                         <span className="text-[var(--text-muted)]">
                           · {destination.warningState.replaceAll("_", " ")} ·{" "}
                           {destination.graphemeCount} characters
@@ -266,7 +295,10 @@ export default async function CaptionViewerPage({
           </section>
         )}
 
-        <section className="surface-panel" aria-labelledby="viewer-deliverables-title">
+        <section
+          className="surface-panel"
+          aria-labelledby="viewer-deliverables-title"
+        >
           <h2 id="viewer-deliverables-title" className="text-lg font-semibold">
             Deliverable links
           </h2>

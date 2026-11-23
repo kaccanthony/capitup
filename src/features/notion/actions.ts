@@ -49,23 +49,33 @@ export async function configureNotionIntegrationAction(formData: FormData) {
       },
     ];
 
-    const viewerUrlPropertyId = value(formData, "viewerUrlPropertyId");
-    if (viewerUrlPropertyId) {
+    const capItUpUrlPropertyId = value(formData, "capItUpUrlPropertyId");
+    if (capItUpUrlPropertyId) {
       mappings.push({
-        field: "viewer_url",
+        field: "deep_link",
         direction: "export",
-        propertyId: viewerUrlPropertyId,
+        propertyId: capItUpUrlPropertyId,
         propertyType: "url",
       });
     }
 
-    const captionContentPropertyId = value(formData, "captionContentPropertyId");
-    if (captionContentPropertyId) {
+    const postStatusPropertyId = value(formData, "postStatusPropertyId");
+    if (postStatusPropertyId) {
       mappings.push({
-        field: "caption_content",
-        direction: "export",
-        propertyId: captionContentPropertyId,
-        propertyType: "rich_text",
+        field: "post_status",
+        direction: "import",
+        propertyId: postStatusPropertyId,
+        propertyType: "status",
+      });
+    }
+
+    const assigneePropertyId = value(formData, "assigneePropertyId");
+    if (assigneePropertyId) {
+      mappings.push({
+        field: "assignee_refs",
+        direction: "import",
+        propertyId: assigneePropertyId,
+        propertyType: "people",
       });
     }
 

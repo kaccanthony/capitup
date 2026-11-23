@@ -62,10 +62,20 @@ export async function synchronizeNotionWebhookImport(
       title: imported.title,
       eventStartsAt: imported.eventStartsAt,
       deadlineAt: imported.deadlineAt,
+      postStatus: imported.postStatus,
+      postStatusMapped: imported.postStatusMapped,
+      assigneeUserIds: imported.assigneeUserIds,
+      assigneeRefsMapped: imported.assigneeRefsMapped,
       payloadHash: sha256(JSON.stringify(imported)),
     });
   } catch (error) {
     const statusCode = notionErrorStatusCode(error);
+    if (error instanceof NotionMappingError) {
+      console.error("[NOTION] mapped page rejected", {
+        field: error.field,
+        reason: error.reason,
+      });
+    }
     const failure =
       error instanceof NotionMappingError
         ? "conflict"

@@ -22,7 +22,7 @@ Do **not** add a separate Express server for the MVP. Next.js route handlers are
 
 Liveblocks owns the active Yjs document, live cursors, text selections, presence, and provider snapshots. Supabase owns users, permissions, durable comments/replies/mentions/resolutions, suggestions, reactions, workflow state, immutable submitted versions, approvals, audit records, and application notifications. Durable text anchors retain Yjs-relative positions so they continue to follow nearby edits. The app does not maintain its own WebSocket service.
 
-The app should be the source of truth for captions, versions, comments, and approval history. Notion should initially be the source of truth for the organization calendar and project/event metadata. Sync only agreed fields between them to avoid two systems overwriting the same caption.
+CapItUp is the source of truth for captions, versions, comments, and approval history. Notion is the source of truth for posting metadata. CapItUp may import explicitly mapped title and schedule fields, but it never reads or writes caption text or approval state through Notion.
 
 ## 2. The refined product idea
 
@@ -762,15 +762,13 @@ First determine what “our Notion calendar” means:
 
 | Field | Initial source of truth | Sync direction |
 |---|---|---|
-| Event/project title | Notion | Notion → app |
-| Event date/deadline | Notion | Notion → app |
-| Assigned publicity writer | App | App → Notion summary field, optional |
-| Caption workflow status | App | App → Notion |
+| Posting title and schedule | Notion | Notion → app through explicit title/date mappings |
+| Platform, assignees, and schedule status | Notion | Notion only; untouched by CapItUp sync |
 | Working caption versions | App only | No sync |
-| Final approved caption | App | App → Notion, optional |
-| CaptionFlow deep link | App | App → Notion |
+| Caption text and approvals | CapItUp | No sync to Notion |
+| Cap-It-Up URL | CapItUp | App → Notion, one URL property |
 
-Use Notion webhooks to detect changes and then fetch the authoritative page. Webhooks are near-real-time rather than guaranteed instant UI transport, so Supabase remains responsible for live in-app collaboration.
+Use Notion webhooks to detect metadata changes and then fetch the authoritative page. Webhooks are near-real-time rather than guaranteed instant UI transport, so Supabase/Liveblocks remain responsible for live caption collaboration. Each Notion posting row is bound to one CapItUp content item before the URL is written.
 
 ### 12.5 Conflict policy
 

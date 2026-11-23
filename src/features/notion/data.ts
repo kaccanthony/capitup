@@ -39,14 +39,24 @@ async function getAdminContext(): Promise<AdminContext> {
   if (decision.kind === "active") {
     organizationId = decision.organizationId;
     roles = decision.roles;
-    canAdminister = canAdministerOrganization(decision, decision.organizationId);
+    canAdminister = canAdministerOrganization(
+      decision,
+      decision.organizationId,
+    );
   }
-  console.log("[NOTION] getAdminContext decision:", JSON.stringify({
-    kind: decision.kind,
-    organizationId,
-    roles,
-    canAdminister,
-  }, null, 2));
+  console.log(
+    "[NOTION] getAdminContext decision:",
+    JSON.stringify(
+      {
+        kind: decision.kind,
+        organizationId,
+        roles,
+        canAdminister,
+      },
+      null,
+      2,
+    ),
+  );
 
   if (
     decision.kind !== "active" ||
@@ -91,7 +101,18 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   const context = await getAdminContext();
 
   // TEMP DEBUG: Log each query with error details
-  let connection: { id: string; label: string; status: string; notion_workspace_id: string; notion_subscription_id: string; notion_data_source_id: string; field_mappings: unknown; last_success_at: string | null; last_failure_at: string | null; last_error_code: string | null } | null = null;
+  let connection: {
+    id: string;
+    label: string;
+    status: string;
+    notion_workspace_id: string;
+    notion_subscription_id: string;
+    notion_data_source_id: string;
+    field_mappings: unknown;
+    last_success_at: string | null;
+    last_failure_at: string | null;
+    last_error_code: string | null;
+  } | null = null;
   let connectionError: { message: string; code: string } | null = null;
 
   try {
@@ -105,7 +126,10 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       .maybeSingle();
     connection = result.data;
     connectionError = result.error;
-    console.log("[NOTION] integration_connections query:", { data: connection ? "found" : "null", error: connectionError });
+    console.log("[NOTION] integration_connections query:", {
+      data: connection ? "found" : "null",
+      error: connectionError,
+    });
   } catch (e) {
     console.error("[NOTION] integration_connections query threw:", e);
     throw new NotionIntegrationAccessError();
@@ -131,7 +155,15 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   if (!parsedMappings.success) throw new NotionIntegrationAccessError();
 
   // Query sync_runs
-  let runsData: { id: string; direction: string; state: string; error_code: string | null; created_at: string }[] | null = null;
+  let runsData:
+    | {
+        id: string;
+        direction: string;
+        state: string;
+        error_code: string | null;
+        created_at: string;
+      }[]
+    | null = null;
   let runsError: { message: string; code: string } | null = null;
   try {
     const result = await context.client
@@ -142,14 +174,19 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       .limit(8);
     runsData = result.data;
     runsError = result.error;
-    console.log("[NOTION] sync_runs query:", { count: runsData?.length ?? 0, error: runsError });
+    console.log("[NOTION] sync_runs query:", {
+      count: runsData?.length ?? 0,
+      error: runsError,
+    });
   } catch (e) {
     console.error("[NOTION] sync_runs query threw:", e);
     throw new NotionIntegrationAccessError();
   }
 
   // Query sync_conflicts
-  let conflictsData: { id: string; kind: string; detail_code: string; created_at: string }[] | null = null;
+  let conflictsData:
+    | { id: string; kind: string; detail_code: string; created_at: string }[]
+    | null = null;
   let conflictsError: { message: string; code: string } | null = null;
   try {
     const result = await context.client
@@ -161,14 +198,18 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       .limit(8);
     conflictsData = result.data;
     conflictsError = result.error;
-    console.log("[NOTION] sync_conflicts query:", { count: conflictsData?.length ?? 0, error: conflictsError });
+    console.log("[NOTION] sync_conflicts query:", {
+      count: conflictsData?.length ?? 0,
+      error: conflictsError,
+    });
   } catch (e) {
     console.error("[NOTION] sync_conflicts query threw:", e);
     throw new NotionIntegrationAccessError();
   }
 
   // Query dead_letter_events
-  let deadLettersData: { id: string; reason_code: string; replay_count: number }[] | null = null;
+  let deadLettersData:
+    { id: string; reason_code: string; replay_count: number }[] | null = null;
   let deadLettersError: { message: string; code: string } | null = null;
   try {
     const result = await context.client
@@ -180,14 +221,21 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       .limit(8);
     deadLettersData = result.data;
     deadLettersError = result.error;
-    console.log("[NOTION] dead_letter_events query:", { count: deadLettersData?.length ?? 0, error: deadLettersError });
+    console.log("[NOTION] dead_letter_events query:", {
+      count: deadLettersData?.length ?? 0,
+      error: deadLettersError,
+    });
   } catch (e) {
     console.error("[NOTION] dead_letter_events query threw:", e);
     throw new NotionIntegrationAccessError();
   }
 
   if (runsError || conflictsError || deadLettersError) {
-    console.error("[NOTION] One or more queries returned error:", { runsError, conflictsError, deadLettersError });
+    console.error("[NOTION] One or more queries returned error:", {
+      runsError,
+      conflictsError,
+      deadLettersError,
+    });
     throw new NotionIntegrationAccessError();
   }
 
@@ -195,7 +243,8 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
     connection: {
       id: connection.id,
       label: connection.label,
-      status: connection.status as "configured" | "active" | "degraded" | "disabled",
+      status: connection.status as
+        "configured" | "active" | "degraded" | "disabled",
       workspaceId: connection.notion_workspace_id,
       subscriptionId: connection.notion_subscription_id,
       dataSourceId: connection.notion_data_source_id,
@@ -366,7 +415,9 @@ export async function getNotionWebhookProcessingContext(
 ): Promise<NotionWebhookProcessingContext> {
   const client = createServiceRoleSupabaseClient();
   if (!client) {
-    console.error("[NOTION] import context unavailable", { reason: "service_role_client_missing" });
+    console.error("[NOTION] import context unavailable", {
+      reason: "service_role_client_missing",
+    });
     throw new NotionIntegrationAccessError();
   }
 
@@ -377,7 +428,9 @@ export async function getNotionWebhookProcessingContext(
     .maybeSingle();
   if (eventError || !event) {
     console.error("[NOTION] import context unavailable", {
-      reason: eventError ? "webhook_event_query_failed" : "webhook_event_missing",
+      reason: eventError
+        ? "webhook_event_query_failed"
+        : "webhook_event_missing",
     });
     throw new NotionIntegrationAccessError();
   }
@@ -435,19 +488,30 @@ export async function applyNotionProjectImport(input: {
   title: string;
   eventStartsAt: string | null;
   deadlineAt: string | null;
+  postStatus: string | null;
+  postStatusMapped: boolean;
+  assigneeUserIds: string[];
+  assigneeRefsMapped: boolean;
   payloadHash: string;
 }) {
   const client = createServiceRoleSupabaseClient();
   if (!client) throw new NotionIntegrationAccessError();
-  const { data, error } = await client.rpc("apply_notion_project_import", {
-    p_webhook_event_id: input.webhookEventId,
-    p_external_page_id: input.externalPageId,
-    p_external_edited_at: input.externalEditedAt,
-    p_title: input.title,
-    p_event_starts_at: input.eventStartsAt,
-    p_deadline_at: input.deadlineAt,
-    p_payload_hash: input.payloadHash,
-  });
+  const { data, error } = await client.rpc(
+    "apply_notion_posting_metadata_import",
+    {
+      p_webhook_event_id: input.webhookEventId,
+      p_external_page_id: input.externalPageId,
+      p_external_edited_at: input.externalEditedAt,
+      p_title: input.title,
+      p_event_starts_at: input.eventStartsAt,
+      p_deadline_at: input.deadlineAt,
+      p_post_status: input.postStatus,
+      p_post_status_mapped: input.postStatusMapped,
+      p_assignee_user_ids: input.assigneeUserIds,
+      p_assignee_refs_mapped: input.assigneeRefsMapped,
+      p_payload_hash: input.payloadHash,
+    },
+  );
   if (error || !data?.[0]) throw new NotionIntegrationAccessError();
   return data[0];
 }

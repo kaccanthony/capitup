@@ -25,11 +25,42 @@ describe("Notion integration administration panel", () => {
             subscriptionId: "subscription-saved",
             dataSourceId: "data-source-1",
             mappings: [
-              { field: "project_title", direction: "import", propertyId: "post-title-id", propertyType: "title" },
-              { field: "event_start_at", direction: "import", propertyId: "event-date-id", propertyType: "date" },
-              { field: "deadline_at", direction: "import", propertyId: "deadline-id", propertyType: "date" },
-              { field: "viewer_url", direction: "export", propertyId: "viewer-url-id", propertyType: "url" },
-              { field: "caption_content", direction: "export", propertyId: "caption-content-id", propertyType: "rich_text" },
+              {
+                field: "project_title",
+                direction: "import",
+                propertyId: "post-title-id",
+                propertyType: "title",
+              },
+              {
+                field: "event_start_at",
+                direction: "import",
+                propertyId: "event-date-id",
+                propertyType: "date",
+              },
+              {
+                field: "deadline_at",
+                direction: "import",
+                propertyId: "deadline-id",
+                propertyType: "date",
+              },
+              {
+                field: "post_status",
+                direction: "import",
+                propertyId: "post-status-id",
+                propertyType: "status",
+              },
+              {
+                field: "assignee_refs",
+                direction: "import",
+                propertyId: "assignee-id",
+                propertyType: "people",
+              },
+              {
+                field: "deep_link",
+                direction: "export",
+                propertyId: "capitup-url-id",
+                propertyType: "url",
+              },
             ],
             lastSuccessAt: null,
             lastFailureAt: "2026-11-15T08:00:00.000Z",
@@ -66,28 +97,40 @@ describe("Notion integration administration panel", () => {
 
     expect(screen.getByText("Not configured")).toBeInTheDocument();
     expect(
-      screen.getByLabelText("Project title property ID (title)"),
+      screen.getByLabelText("Posting title property ID (title)"),
     ).toBeRequired();
     expect(
-      screen.getByLabelText("Event date property ID (date)"),
+      screen.getByLabelText("Posting date property ID (date)"),
     ).toBeRequired();
     expect(screen.getByLabelText("Deadline property ID (date)")).toBeRequired();
+    expect(
+      screen.getByLabelText("Post STATUS property ID (status, optional)"),
+    ).toHaveValue("post-status-id");
+    expect(
+      screen.getByLabelText("Assignee property ID (people, optional)"),
+    ).toHaveValue("assignee-id");
     expect(screen.getAllByText("notion_sync_unavailable")).toHaveLength(3);
     expect(screen.getByRole("button", { name: "Retry now" })).toBeEnabled();
-    expect(screen.getByLabelText("Notion workspace ID")).toHaveValue("workspace-saved");
-    expect(screen.getByLabelText("Webhook subscription ID")).toHaveValue("subscription-saved");
-    expect(screen.getByLabelText("Project title property ID (title)")).toHaveValue("post-title-id");
+    expect(screen.getByLabelText("Notion workspace ID")).toHaveValue(
+      "workspace-saved",
+    );
+    expect(screen.getByLabelText("Webhook subscription ID")).toHaveValue(
+      "subscription-saved",
+    );
+    expect(
+      screen.getByLabelText("Posting title property ID (title)"),
+    ).toHaveValue("post-title-id");
     const workspaceField = screen.getByLabelText("Notion workspace ID");
     expect(workspaceField).toHaveAttribute("type", "password");
-    fireEvent.click(screen.getByRole("button", { name: "Show Notion workspace ID" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show Notion workspace ID" }),
+    );
     expect(workspaceField).toHaveAttribute("type", "text");
     expect(
       screen.getByRole("button", { name: "Acknowledge resolution" }),
     ).toBeEnabled();
     expect(
-      screen.getByText(
-        /working captions, versions, and final captions remain disabled/i,
-      ),
+      screen.getByText(/CapItUp writes only the Cap-It-Up URL/i),
     ).toBeInTheDocument();
   });
 });

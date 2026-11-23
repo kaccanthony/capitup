@@ -35,4 +35,21 @@ describe("Phase 07 Notion schema", () => {
     );
     expect(migration).not.toContain("final_approved_caption");
   });
+
+  it("keeps Notion schedule status and assignee IDs separate from editorial assignments", async () => {
+    const migration = await readFile(
+      "supabase/migrations/20261123000400_notion_posting_metadata.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain("notion_post_status text");
+    expect(migration).toContain("notion_assignee_user_ids text[]");
+    expect(migration).toContain("apply_notion_posting_metadata_import");
+    expect(migration).toContain("'SCHEDULED'");
+    expect(migration).toContain("'NOT NEEDED'");
+    expect(migration).toContain("from public, anon, authenticated");
+    expect(migration).toContain("to service_role");
+    expect(migration).not.toContain("content_item_assignments");
+    expect(migration).not.toContain("content_status");
+  });
 });

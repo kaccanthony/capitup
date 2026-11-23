@@ -2,6 +2,7 @@ import type {
   NotionFieldMapping,
   NotionFieldMappings,
 } from "@/features/notion/contracts";
+import { notionPostStatusSchema } from "@/features/notion/contracts";
 
 export type { NotionFieldMappings, NotionFieldMapping };
 
@@ -17,6 +18,7 @@ type NotionPropertyValue = {
   date?: unknown;
   select?: unknown;
   status?: unknown;
+  people?: unknown;
   url?: unknown;
 };
 
@@ -32,24 +34,28 @@ export type ImportedNotionProject = {
   title: string;
   eventStartsAt: string | null;
   deadlineAt: string | null;
+  postStatus: string | null;
+  postStatusMapped: boolean;
+  assigneeUserIds: string[];
+  assigneeRefsMapped: boolean;
 };
-
-export type NotionExportValues = {
-  writerSummary?: string | null;
-  workflowStatus?: string | null;
-  deepLink?: string | null;
-  viewerUrl?: string | null;
-  captionContent?: string | null;
-};
-
-export type NotionPropertyUpdate =
-  | { rich_text: { text: { content: string } }[] }
-  | { select: { name: string } | null }
-  | { status: { name: string } | null }
-  | { url: string | null };
 
 export class NotionMappingError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly field:
+      | "project_title"
+      | "event_start_at"
+      | "deadline_at"
+      | "post_status"
+      | "assignee_refs"
+      | "page",
+    readonly reason:
+      | "property_missing"
+      | "property_wrong_type"
+      | "value_missing_or_invalid"
+      | "timestamp_invalid",
+  ) {
     super(message);
     this.name = "NotionMappingError";
   }
@@ -115,23 +121,181 @@ export function mapNotionPageToProject(input: {
 }): ImportedNotionProject {
   const titleMapping = mappingFor(input.mappings, "project_title");
   const titleProperty = propertyFor(input.page, titleMapping);
+  if (!titleProperty) {
+    throw new NotionMappingError(
+      "The mapped Notion title is invalid.",
+      "project_title",
+      "property_missing",
+    );
+  }
+  if (titleProperty.type && titleProperty.type !== "title") {
+    throw new NotionMappingError(
+      "The mapped Notion title is invalid.",
+      "project_title",
+      "property_wrong_type",
+    );
+  }
   const title = richText(titleProperty?.title);
 
   if (!title || title.length > 160) {
-    throw new NotionMappingError("The mapped Notion title is invalid.");
+    throw new NotionMappingError(
+      "The mapped Notion title is invalid.",
+      "project_title",
+      "value_missing_or_invalid",
+    );
   }
 
   const eventMapping = mappingFor(input.mappings, "event_start_at");
   const deadlineMapping = mappingFor(input.mappings, "deadline_at");
-  const eventStartsAt = dateValue(propertyFor(input.page, eventMapping)?.date);
-  const deadlineAt = dateValue(propertyFor(input.page, deadlineMapping)?.date);
+  const eventProperty = propertyFor(input.page, eventMapping);
+  const deadlineProperty = propertyFor(input.page, deadlineMapping);
+  if (!eventProperty) {
+    throw new NotionMappingError(
+      "A mapped Notion date is invalid.",
+      "event_start_at",
+      "property_missing",
+    );
+  }
+  if (eventProperty.type && eventProperty.type !== "date") {
+    throw new NotionMappingError(
+      "A mapped Notion date is invalid.",
+      "event_start_at",
+      "property_wrong_type",
+    );
+  }
+  if (!deadlineProperty) {
+    throw new NotionMappingError(
+      "A mapped Notion date is invalid.",
+      "deadline_at",
+      "property_missing",
+    );
+  }
+  if (deadlineProperty.type && deadlineProperty.type !== "date") {
+    throw new NotionMappingError(
+      "A mapped Notion date is invalid.",
+      "deadline_at",
+      "property_wrong_type",
+    );
+  }
+  const eventStartsAt = dateValue(eventProperty.date);
+  const deadlineAt = dateValue(deadlineProperty.date);
 
-  if (eventStartsAt === undefined || deadlineAt === undefined) {
-    throw new NotionMappingError("A mapped Notion date is invalid.");
+  if (eventStartsAt === undefined) {
+    throw new NotionMappingError(
+      "A mapped Notion date is invalid.",
+      "event_start_at",
+      "value_missing_or_invalid",
+    );
+  }
+  if (deadlineAt === undefined) {
+    throw new NotionMappingError(
+      "A mapped Notion date is invalid.",
+      "deadline_at",
+      "value_missing_or_invalid",
+    );
   }
 
   if (Number.isNaN(Date.parse(input.page.lastEditedAt))) {
-    throw new NotionMappingError("The Notion page timestamp is invalid.");
+    throw new NotionMappingError(
+      "The Notion page timestamp is invalid.",
+      "page",
+      "timestamp_invalid",
+    );
+  }
+
+  const statusMapping = mappingFor(input.mappings, "post_status");
+  const statusProperty = propertyFor(input.page, statusMapping);
+  let postStatus: string | null = null;
+  if (statusMapping && !statusProperty) {
+    throw new NotionMappingError(
+      "The mapped Notion schedule status is invalid.",
+      "post_status",
+      "property_missing",
+    );
+  }
+  if (statusProperty?.type && statusProperty.type !== "status") {
+    throw new NotionMappingError(
+      "The mapped Notion schedule status is invalid.",
+      "post_status",
+      "property_wrong_type",
+    );
+  }
+  if (statusMapping && statusProperty && !("status" in statusProperty)) {
+    throw new NotionMappingError(
+      "The mapped Notion schedule status is invalid.",
+      "post_status",
+      "value_missing_or_invalid",
+    );
+  }
+  if (statusProperty?.status !== undefined && statusProperty.status !== null) {
+    const statusName =
+      typeof statusProperty.status === "object" &&
+      statusProperty.status !== null &&
+      "name" in statusProperty.status &&
+      typeof statusProperty.status.name === "string"
+        ? statusProperty.status.name
+        : null;
+    const parsedStatus = notionPostStatusSchema.safeParse(statusName);
+    if (!parsedStatus.success) {
+      throw new NotionMappingError(
+        "The mapped Notion schedule status is invalid.",
+        "post_status",
+        "value_missing_or_invalid",
+      );
+    }
+    postStatus = parsedStatus.data;
+  }
+
+  const assigneeMapping = mappingFor(input.mappings, "assignee_refs");
+  const assigneeProperty = propertyFor(input.page, assigneeMapping);
+  let assigneeUserIds: string[] = [];
+  if (assigneeMapping && !assigneeProperty) {
+    throw new NotionMappingError(
+      "The mapped Notion assignee field is invalid.",
+      "assignee_refs",
+      "property_missing",
+    );
+  }
+  if (assigneeProperty?.type && assigneeProperty.type !== "people") {
+    throw new NotionMappingError(
+      "The mapped Notion assignee field is invalid.",
+      "assignee_refs",
+      "property_wrong_type",
+    );
+  }
+  if (assigneeProperty?.people !== undefined) {
+    if (
+      !Array.isArray(assigneeProperty.people) ||
+      assigneeProperty.people.length > 100
+    ) {
+      throw new NotionMappingError(
+        "The mapped Notion assignee field is invalid.",
+        "assignee_refs",
+        "value_missing_or_invalid",
+      );
+    }
+    const ids = assigneeProperty.people.map((person) =>
+      typeof person === "object" &&
+      person !== null &&
+      "id" in person &&
+      typeof person.id === "string"
+        ? person.id.trim()
+        : "",
+    );
+    if (ids.some((id) => !id || id.length > 200)) {
+      throw new NotionMappingError(
+        "The mapped Notion assignee field is invalid.",
+        "assignee_refs",
+        "value_missing_or_invalid",
+      );
+    }
+    assigneeUserIds = [...new Set(ids)];
+  } else if (assigneeMapping) {
+    throw new NotionMappingError(
+      "The mapped Notion assignee field is invalid.",
+      "assignee_refs",
+      "value_missing_or_invalid",
+    );
   }
 
   return {
@@ -140,71 +304,9 @@ export function mapNotionPageToProject(input: {
     title,
     eventStartsAt,
     deadlineAt,
+    postStatus,
+    postStatusMapped: Boolean(statusMapping),
+    assigneeUserIds,
+    assigneeRefsMapped: Boolean(assigneeMapping),
   };
-}
-
-/**
- * Export is intentionally limited to app-owned metadata. O-021 is unresolved,
- * so a final approved caption cannot be encoded by this mapper.
- */
-export function buildNotionExportProperties(input: {
-  mappings: NotionFieldMappings;
-  values: NotionExportValues;
-}): Record<string, NotionPropertyUpdate> {
-  const result: Record<string, NotionPropertyUpdate> = {};
-
-  const writer = mappingFor(input.mappings, "writer_summary");
-  if (writer && input.values.writerSummary !== undefined) {
-    const value = input.values.writerSummary?.trim() ?? "";
-    if (value.length > 2_000) throw new Error("Writer summary is too long.");
-    result[writer.propertyId] = {
-      rich_text: value ? [{ text: { content: value } }] : [],
-    };
-  }
-
-  const status = mappingFor(input.mappings, "workflow_status");
-  if (status && input.values.workflowStatus !== undefined) {
-    const value = input.values.workflowStatus?.trim() ?? null;
-    if (value && value.length > 120)
-      throw new Error("Workflow status is too long.");
-    result[status.propertyId] =
-      status.propertyType === "status"
-        ? { status: value ? { name: value } : null }
-        : { select: value ? { name: value } : null };
-  }
-
-  const deepLink = mappingFor(input.mappings, "deep_link");
-  if (deepLink && input.values.deepLink !== undefined) {
-    const value = input.values.deepLink?.trim() ?? null;
-    if (value) {
-      const url = new URL(value);
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        throw new Error("Deep link must use HTTP or HTTPS.");
-      }
-    }
-    result[deepLink.propertyId] = { url: value };
-  }
-
-  const viewerUrl = mappingFor(input.mappings, "viewer_url");
-  if (viewerUrl && input.values.viewerUrl !== undefined) {
-    const value = input.values.viewerUrl?.trim() ?? null;
-    if (value) {
-      const url = new URL(value);
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        throw new Error("Viewer URL must use HTTP or HTTPS.");
-      }
-    }
-    result[viewerUrl.propertyId] = { url: value };
-  }
-
-  const captionContent = mappingFor(input.mappings, "caption_content");
-  if (captionContent && input.values.captionContent !== undefined) {
-    const value = input.values.captionContent?.trim() ?? "";
-    if (value.length > 2_000) throw new Error("Caption content exceeds 2000 character limit.");
-    result[captionContent.propertyId] = {
-      rich_text: value ? [{ text: { content: value } }] : [],
-    };
-  }
-
-  return result;
 }

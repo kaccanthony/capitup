@@ -253,6 +253,7 @@ export type ContentDetailDto = {
     responsibility: ContentResponsibility;
   }[];
   canEdit: boolean;
+  canSyncNotionLink: boolean;
 };
 
 export async function getAccessibleContentItem(
@@ -338,6 +339,13 @@ export async function getAccessibleContentItem(
       actorAssignmentIds.has(assignment.project_assignment_id),
     )
     .map((assignment) => assignment.responsibility);
+  const canEditByAssignment = canEditContent({
+    actorOrganizationId: context.organizationId,
+    resourceOrganizationId: item.organization_id,
+    organizationRoles: context.roles,
+    projectAssignments: actorAssignments.map((assignment) => assignment.role),
+    contentResponsibilities: actorResponsibilities,
+  });
   const tagsById = new Map(
     (tagsResult.data ?? []).map((tag) => [
       tag.id,
@@ -382,15 +390,9 @@ export async function getAccessibleContentItem(
     ),
     canEdit:
       (item.status === "draft" || item.status === "changes_requested") &&
-      canEditContent({
-        actorOrganizationId: context.organizationId,
-        resourceOrganizationId: item.organization_id,
-        organizationRoles: context.roles,
-        projectAssignments: actorAssignments.map(
-          (assignment) => assignment.role,
-        ),
-        contentResponsibilities: actorResponsibilities,
-      }),
+      canEditByAssignment,
+    canSyncNotionLink:
+      context.roles.includes("org_admin") || canEditByAssignment,
   };
 }
 

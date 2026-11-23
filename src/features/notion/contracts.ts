@@ -6,20 +6,27 @@ export const notionFieldKeySchema = z.enum([
   "project_title",
   "event_start_at",
   "deadline_at",
-  "writer_summary",
-  "workflow_status",
+  "post_status",
+  "assignee_refs",
   "deep_link",
-  "viewer_url",
-  "caption_content",
+]);
+
+export const notionPostStatusSchema = z.enum([
+  "NOT POSTED YET",
+  "SCHEDULED",
+  "POSTPONED",
+  "CANCELLED",
+  "NOT NEEDED",
+  "POSTED",
 ]);
 
 export const notionFieldDirectionSchema = z.enum(["import", "export"]);
 export const notionPropertyTypeSchema = z.enum([
   "title",
   "date",
-  "rich_text",
   "select",
   "status",
+  "people",
   "url",
 ]);
 
@@ -30,51 +37,75 @@ export const notionFieldMappingSchema = z.object({
   propertyType: notionPropertyTypeSchema,
 });
 
-export const notionFieldMappingsSchema = z
-  .array(notionFieldMappingSchema)
-  .max(6)
-  .superRefine((mappings, context) => {
-    const seen = new Set<string>();
+export const notionFieldMappingsSchema = z.preprocess(
+  (input) =>
+    Array.isArray(input)
+      ? input.flatMap((entry) => {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+            return [entry];
+          }
+          const mapping = entry as Record<string, unknown>;
+          if (
+            mapping.field === "caption_content" ||
+            mapping.field === "writer_summary" ||
+            mapping.field === "workflow_status"
+          ) {
+            return [];
+          }
+          if (mapping.field === "viewer_url") {
+            return [{ ...mapping, field: "deep_link" }];
+          }
+          return [entry];
+        })
+      : input,
+  z
+    .array(notionFieldMappingSchema)
+    .max(6)
+    .superRefine((mappings, context) => {
+      const seen = new Set<string>();
 
-    for (const mapping of mappings) {
-      if (seen.has(mapping.field)) {
-        context.addIssue({
-          code: "custom",
-          message: "A field may be mapped only once.",
-          path: ["field"],
-        });
+      for (const mapping of mappings) {
+        if (seen.has(mapping.field)) {
+          context.addIssue({
+            code: "custom",
+            message: "A field may be mapped only once.",
+            path: ["field"],
+          });
+        }
+        seen.add(mapping.field);
       }
-      seen.add(mapping.field);
-    }
 
-    const expected: Record<
-      z.infer<typeof notionFieldKeySchema>,
-      { direction: z.infer<typeof notionFieldDirectionSchema>; types: string[] }
-    > = {
-      project_title: { direction: "import", types: ["title"] },
-      event_start_at: { direction: "import", types: ["date"] },
-      deadline_at: { direction: "import", types: ["date"] },
-      writer_summary: { direction: "export", types: ["rich_text"] },
-      workflow_status: { direction: "export", types: ["select", "status"] },
-      deep_link: { direction: "export", types: ["url"] },
-      viewer_url: { direction: "export", types: ["url"] },
-      caption_content: { direction: "export", types: ["rich_text"] },
-    };
+      const expected: Record<
+        z.infer<typeof notionFieldKeySchema>,
+        {
+          direction: z.infer<typeof notionFieldDirectionSchema>;
+          types: string[];
+        }
+      > = {
+        project_title: { direction: "import", types: ["title"] },
+        event_start_at: { direction: "import", types: ["date"] },
+        deadline_at: { direction: "import", types: ["date"] },
+        post_status: { direction: "import", types: ["status"] },
+        assignee_refs: { direction: "import", types: ["people"] },
+        deep_link: { direction: "export", types: ["url"] },
+      };
 
-    for (const mapping of mappings) {
-      const rule = expected[mapping.field];
-      if (
-        mapping.direction !== rule.direction ||
-        !rule.types.includes(mapping.propertyType)
-      ) {
-        context.addIssue({
-          code: "custom",
-          message: "The mapped field has an invalid direction or Notion type.",
-          path: ["field"],
-        });
+      for (const mapping of mappings) {
+        const rule = expected[mapping.field];
+        if (
+          mapping.direction !== rule.direction ||
+          !rule.types.includes(mapping.propertyType)
+        ) {
+          context.addIssue({
+            code: "custom",
+            message:
+              "The mapped field has an invalid direction or Notion type.",
+            path: ["field"],
+          });
+        }
       }
-    }
-  });
+    }),
+);
 
 export type NotionFieldMapping = z.infer<typeof notionFieldMappingSchema>;
 export type NotionFieldMappings = z.infer<typeof notionFieldMappingsSchema>;

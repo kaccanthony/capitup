@@ -1063,7 +1063,10 @@ export type Database = {
           integration_connection_id: string;
           organization_id: string;
           project_id: string;
+          content_item_id: string | null;
           notion_page_id: string;
+          notion_post_status: string | null;
+          notion_assignee_user_ids: string[];
           last_external_edited_at: string | null;
           last_import_hash: string | null;
           last_export_hash: string | null;
@@ -1443,6 +1446,10 @@ export type Database = {
         Args: { p_conflict_id: string };
         Returns: boolean;
       };
+      claim_notion_content_item_link: {
+        Args: { p_project_id: string; p_content_item_id: string };
+        Returns: boolean;
+      };
       accept_notion_webhook_event: {
         Args: {
           p_workspace_id: string;
@@ -1463,6 +1470,22 @@ export type Database = {
           p_title: string;
           p_event_starts_at: string | null;
           p_deadline_at: string | null;
+          p_payload_hash: string;
+        };
+        Returns: { project_id: string; applied: boolean }[];
+      };
+      apply_notion_posting_metadata_import: {
+        Args: {
+          p_webhook_event_id: string;
+          p_external_page_id: string;
+          p_external_edited_at: string;
+          p_title: string;
+          p_event_starts_at: string | null;
+          p_deadline_at: string | null;
+          p_post_status: string | null;
+          p_post_status_mapped: boolean;
+          p_assignee_user_ids: string[];
+          p_assignee_refs_mapped: boolean;
           p_payload_hash: string;
         };
         Returns: { project_id: string; applied: boolean }[];

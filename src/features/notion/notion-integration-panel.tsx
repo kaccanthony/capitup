@@ -49,8 +49,9 @@ export function NotionIntegrationPanel({
           </h2>
           <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
             The token stays in server deployment configuration. Configure only
-            the explicitly shared development data source and the three
-            Notion-owned project fields.
+            the explicitly shared posting data source, its Notion-owned title
+            and schedule fields, optional posting status and assignee
+            references, and the Cap-It-Up URL property.
           </p>
 
           <dl className="mt-5 grid gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-4 text-sm sm:grid-cols-2">
@@ -93,13 +94,13 @@ export function NotionIntegrationPanel({
           className="surface-panel"
           aria-labelledby="notion-mapping-title"
         >
-          <p className="eyebrow">Mapped import fields</p>
+          <p className="eyebrow">Posting metadata and link</p>
           <h2 id="notion-mapping-title" className="mt-2 text-xl font-semibold">
             Safe setup
           </h2>
           <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-            Exports, working captions, versions, and final captions remain
-            disabled until their field ownership decisions are accepted.
+            Notion remains the source for posting metadata. CapItUp writes only
+            the Cap-It-Up URL; captions and approval history stay in CapItUp.
           </p>
           <form
             action={configureNotionIntegrationAction}
@@ -148,21 +149,21 @@ export function NotionIntegrationPanel({
               />
             </label>
             <label className="text-sm font-medium">
-              Project title property ID (title)
+              Posting title property ID (title)
               <SensitiveIdInput
                 className={fieldClassName}
                 defaultValue={mappingValue(overview, "project_title")}
-                label="Project title property ID"
+                label="Posting title property ID"
                 name="titlePropertyId"
                 required
               />
             </label>
             <label className="text-sm font-medium">
-              Event date property ID (date)
+              Posting date property ID (date)
               <SensitiveIdInput
                 className={fieldClassName}
                 defaultValue={mappingValue(overview, "event_start_at")}
-                label="Event date property ID"
+                label="Posting date property ID"
                 name="eventStartPropertyId"
                 required
               />
@@ -178,21 +179,30 @@ export function NotionIntegrationPanel({
               />
             </label>
             <label className="text-sm font-medium">
-              CapItUp Viewer URL property ID (url)
+              Post STATUS property ID (status, optional)
               <SensitiveIdInput
                 className={fieldClassName}
-                defaultValue={mappingValue(overview, "viewer_url")}
-                label="CapItUp Viewer URL property ID"
-                name="viewerUrlPropertyId"
+                defaultValue={mappingValue(overview, "post_status")}
+                label="Post STATUS property ID"
+                name="postStatusPropertyId"
               />
             </label>
             <label className="text-sm font-medium">
-              CapItUp Caption property ID (rich_text)
+              Assignee property ID (people, optional)
               <SensitiveIdInput
                 className={fieldClassName}
-                defaultValue={mappingValue(overview, "caption_content")}
-                label="CapItUp Caption property ID"
-                name="captionContentPropertyId"
+                defaultValue={mappingValue(overview, "assignee_refs")}
+                label="Assignee property ID"
+                name="assigneePropertyId"
+              />
+            </label>
+            <label className="text-sm font-medium">
+              Cap-It-Up URL property ID (url)
+              <SensitiveIdInput
+                className={fieldClassName}
+                defaultValue={mappingValue(overview, "deep_link")}
+                label="Cap-It-Up URL property ID"
+                name="capItUpUrlPropertyId"
               />
             </label>
             <button className={primaryButtonClassName} type="submit">
