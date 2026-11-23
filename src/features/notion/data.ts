@@ -326,7 +326,12 @@ export async function acceptVerifiedNotionWebhook(input: {
   payloadHash: string;
 }) {
   const client = createServiceRoleSupabaseClient();
-  if (!client) throw new NotionIntegrationAccessError();
+  if (!client) {
+    console.error("[NOTION] webhook acceptance failed", {
+      reason: "service_role_client_missing",
+    });
+    throw new NotionIntegrationAccessError();
+  }
 
   const { data, error } = await client.rpc("accept_notion_webhook_event", {
     p_workspace_id: input.event.workspace_id,
@@ -338,7 +343,13 @@ export async function acceptVerifiedNotionWebhook(input: {
     p_payload_sha256: input.payloadHash,
   });
   const accepted = data?.[0];
-  if (error || !accepted) throw new NotionIntegrationAccessError();
+  if (error || !accepted) {
+    console.error("[NOTION] webhook acceptance failed", {
+      reason: error ? "accept_rpc_error" : "accept_rpc_empty_result",
+      databaseCode: error?.code ?? null,
+    });
+    throw new NotionIntegrationAccessError();
+  }
   return accepted;
 }
 
