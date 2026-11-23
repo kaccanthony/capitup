@@ -87,8 +87,8 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   const context = await getAdminContext();
 
   // TEMP DEBUG: Log each query with error details
-  let connection: Awaited<typeof context.client.from("integration_connections").select("*").maybeSingle()>.data | null = null;
-  let connectionError: Awaited<typeof context.client.from("integration_connections").select("*").maybeSingle()>.error | null = null;
+  let connection: { id: string; label: string; status: string; notion_data_source_id: string; last_success_at: string | null; last_failure_at: string | null; last_error_code: string | null } | null = null;
+  let connectionError: { message: string; code: string } | null = null;
 
   try {
     const result = await context.client
@@ -122,8 +122,8 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   }
 
   // Query sync_runs
-  let runsData: Awaited<typeof context.client.from("sync_runs").select("*")>.data | null = null;
-  let runsError: Awaited<typeof context.client.from("sync_runs").select("*")>.error | null = null;
+  let runsData: { id: string; direction: string; state: string; error_code: string | null; created_at: string }[] | null = null;
+  let runsError: { message: string; code: string } | null = null;
   try {
     const result = await context.client
       .from("sync_runs")
@@ -140,8 +140,8 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   }
 
   // Query sync_conflicts
-  let conflictsData: Awaited<typeof context.client.from("sync_conflicts").select("*")>.data | null = null;
-  let conflictsError: Awaited<typeof context.client.from("sync_conflicts").select("*")>.error | null = null;
+  let conflictsData: { id: string; kind: string; detail_code: string; created_at: string }[] | null = null;
+  let conflictsError: { message: string; code: string } | null = null;
   try {
     const result = await context.client
       .from("sync_conflicts")
@@ -159,8 +159,8 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   }
 
   // Query dead_letter_events
-  let deadLettersData: Awaited<typeof context.client.from("dead_letter_events").select("*")>.data | null = null;
-  let deadLettersError: Awaited<typeof context.client.from("dead_letter_events").select("*")>.error | null = null;
+  let deadLettersData: { id: string; reason_code: string; replay_count: number }[] | null = null;
+  let deadLettersError: { message: string; code: string } | null = null;
   try {
     const result = await context.client
       .from("dead_letter_events")
@@ -186,7 +186,7 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
     connection: {
       id: connection.id,
       label: connection.label,
-      status: connection.status,
+      status: connection.status as "configured" | "active" | "degraded" | "disabled",
       dataSourceId: connection.notion_data_source_id,
       lastSuccessAt: connection.last_success_at,
       lastFailureAt: connection.last_failure_at,
@@ -194,7 +194,7 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
     },
     recentRuns: (runsData ?? []).map((run) => ({
       id: run.id,
-      direction: run.direction,
+      direction: run.direction as "import" | "export" | "reconcile",
       state: run.state,
       errorCode: run.error_code,
       createdAt: run.created_at,
