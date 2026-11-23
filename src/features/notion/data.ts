@@ -6,6 +6,7 @@ import { canAdministerOrganization } from "@/lib/auth/policy";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { OrganizationRole } from "@/types/database";
+import type { NotionFieldMappings } from "@/features/notion/contracts";
 import {
   notionConnectionInputSchema,
   notionFieldMappingsSchema,
@@ -62,7 +63,10 @@ export type NotionIntegrationOverview = {
     id: string;
     label: string;
     status: "configured" | "active" | "degraded" | "disabled";
+    workspaceId: string;
+    subscriptionId: string;
     dataSourceId: string;
+    mappings: NotionFieldMappings;
     lastSuccessAt: string | null;
     lastFailureAt: string | null;
     lastErrorCode: string | null;
@@ -87,14 +91,14 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
   const context = await getAdminContext();
 
   // TEMP DEBUG: Log each query with error details
-  let connection: { id: string; label: string; status: string; notion_data_source_id: string; last_success_at: string | null; last_failure_at: string | null; last_error_code: string | null } | null = null;
+  let connection: { id: string; label: string; status: string; notion_workspace_id: string; notion_subscription_id: string; notion_data_source_id: string; field_mappings: unknown; last_success_at: string | null; last_failure_at: string | null; last_error_code: string | null } | null = null;
   let connectionError: { message: string; code: string } | null = null;
 
   try {
     const result = await context.client
       .from("integration_connections")
       .select(
-        "id,label,status,notion_data_source_id,last_success_at,last_failure_at,last_error_code",
+        "id,label,status,notion_workspace_id,notion_subscription_id,notion_data_source_id,field_mappings,last_success_at,last_failure_at,last_error_code",
       )
       .eq("organization_id", context.organizationId)
       .eq("provider", "notion")
@@ -120,6 +124,11 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       deadLetters: [],
     };
   }
+
+  const parsedMappings = notionFieldMappingsSchema.safeParse(
+    connection.field_mappings,
+  );
+  if (!parsedMappings.success) throw new NotionIntegrationAccessError();
 
   // Query sync_runs
   let runsData: { id: string; direction: string; state: string; error_code: string | null; created_at: string }[] | null = null;
@@ -187,7 +196,10 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       id: connection.id,
       label: connection.label,
       status: connection.status as "configured" | "active" | "degraded" | "disabled",
+      workspaceId: connection.notion_workspace_id,
+      subscriptionId: connection.notion_subscription_id,
       dataSourceId: connection.notion_data_source_id,
+      mappings: parsedMappings.data,
       lastSuccessAt: connection.last_success_at,
       lastFailureAt: connection.last_failure_at,
       lastErrorCode: connection.last_error_code,

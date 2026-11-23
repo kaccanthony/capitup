@@ -11,6 +11,18 @@ import {
   primaryButtonClassName,
   secondaryButtonClassName,
 } from "@/features/projects/styles";
+import { SensitiveIdInput } from "@/features/notion/sensitive-id-input";
+import type { NotionFieldMapping } from "@/features/notion/contracts";
+
+function mappingValue(
+  overview: NotionIntegrationOverview,
+  field: NotionFieldMapping["field"],
+) {
+  return (
+    overview.connection?.mappings.find((mapping) => mapping.field === field)
+      ?.propertyId ?? ""
+  );
+}
 
 export function NotionIntegrationPanel({
   organizationId,
@@ -107,60 +119,79 @@ export function NotionIntegrationPanel({
             </label>
             <label className="text-sm font-medium">
               Notion workspace ID
-              <input className={fieldClassName} name="workspaceId" required />
+              <SensitiveIdInput
+                className={fieldClassName}
+                defaultValue={overview.connection?.workspaceId ?? ""}
+                label="Notion workspace ID"
+                name="workspaceId"
+                required
+              />
             </label>
             <label className="text-sm font-medium">
               Webhook subscription ID
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
+                defaultValue={overview.connection?.subscriptionId ?? ""}
+                label="Webhook subscription ID"
                 name="subscriptionId"
                 required
               />
             </label>
             <label className="text-sm font-medium">
               Shared data source ID
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
                 defaultValue={overview.connection?.dataSourceId ?? ""}
+                label="Shared data source ID"
                 name="dataSourceId"
                 required
               />
             </label>
             <label className="text-sm font-medium">
               Project title property ID (title)
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
+                defaultValue={mappingValue(overview, "project_title")}
+                label="Project title property ID"
                 name="titlePropertyId"
                 required
               />
             </label>
             <label className="text-sm font-medium">
               Event date property ID (date)
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
+                defaultValue={mappingValue(overview, "event_start_at")}
+                label="Event date property ID"
                 name="eventStartPropertyId"
                 required
               />
             </label>
             <label className="text-sm font-medium">
               Deadline property ID (date)
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
+                defaultValue={mappingValue(overview, "deadline_at")}
+                label="Deadline property ID"
                 name="deadlinePropertyId"
                 required
               />
             </label>
             <label className="text-sm font-medium">
               CapItUp Viewer URL property ID (url)
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
+                defaultValue={mappingValue(overview, "viewer_url")}
+                label="CapItUp Viewer URL property ID"
                 name="viewerUrlPropertyId"
               />
             </label>
             <label className="text-sm font-medium">
               CapItUp Caption property ID (rich_text)
-              <input
+              <SensitiveIdInput
                 className={fieldClassName}
+                defaultValue={mappingValue(overview, "caption_content")}
+                label="CapItUp Caption property ID"
                 name="captionContentPropertyId"
               />
             </label>
