@@ -2,6 +2,21 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("Phase 07 Notion schema", () => {
+  it("accepts verified webhook recovery for active and degraded connections", async () => {
+    const migration = await readFile(
+      "supabase/migrations/20261123000500_notion_degraded_webhook_recovery.sql",
+      "utf8",
+    );
+    expect(migration).toContain("status in ('active', 'degraded')");
+    expect(migration).toContain("interval '5 minutes'");
+    expect(migration).toContain("interval '1 minute'");
+    expect(migration).toContain(
+      "on conflict (integration_connection_id, provider_event_id) do nothing",
+    );
+    expect(migration).toContain("char_length(coalesce(p_payload_sha256, '')) <> 64");
+    expect(migration).not.toContain("status = 'configured'");
+  });
+
   it("keeps integration state RLS-protected and direct browser mutation denied", async () => {
     const migration = await readFile(
       "supabase/migrations/20261115000200_phase_07_notion_integration.sql",

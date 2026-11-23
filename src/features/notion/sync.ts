@@ -49,12 +49,15 @@ export async function synchronizeNotionWebhookImport(
     throw error;
   }
 
+  let phase: "fetch_page" | "map_page" | "apply_import" = "fetch_page";
   try {
     const page = await gateway.fetchPage(context.externalObjectId);
+    phase = "map_page";
     const imported = mapNotionPageToProject({
       page,
       mappings: context.fieldMappings,
     });
+    phase = "apply_import";
     return await gateway.applyImport({
       webhookEventId: context.webhookEventId,
       externalPageId: imported.externalPageId,
@@ -70,6 +73,13 @@ export async function synchronizeNotionWebhookImport(
     });
   } catch (error) {
     const statusCode = notionErrorStatusCode(error);
+    if (!(error instanceof NotionMappingError)) {
+      console.error("[NOTION] import failed", {
+        phase,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        statusCode: statusCode ?? null,
+      });
+    }
     if (error instanceof NotionMappingError) {
       console.error("[NOTION] mapped page rejected", {
         field: error.field,
