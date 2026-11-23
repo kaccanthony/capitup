@@ -9,6 +9,8 @@ export const notionFieldKeySchema = z.enum([
   "writer_summary",
   "workflow_status",
   "deep_link",
+  "viewer_url",
+  "caption_content",
 ]);
 
 export const notionFieldDirectionSchema = z.enum(["import", "export"]);
@@ -55,6 +57,8 @@ export const notionFieldMappingsSchema = z
       writer_summary: { direction: "export", types: ["rich_text"] },
       workflow_status: { direction: "export", types: ["select", "status"] },
       deep_link: { direction: "export", types: ["url"] },
+      viewer_url: { direction: "export", types: ["url"] },
+      caption_content: { direction: "export", types: ["rich_text"] },
     };
 
     for (const mapping of mappings) {

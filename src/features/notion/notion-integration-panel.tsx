@@ -150,6 +150,20 @@ export function NotionIntegrationPanel({
                 required
               />
             </label>
+            <label className="text-sm font-medium">
+              CapItUp Viewer URL property ID (url)
+              <input
+                className={fieldClassName}
+                name="viewerUrlPropertyId"
+              />
+            </label>
+            <label className="text-sm font-medium">
+              CapItUp Caption property ID (rich_text)
+              <input
+                className={fieldClassName}
+                name="captionContentPropertyId"
+              />
+            </label>
             <button className={primaryButtonClassName} type="submit">
               Save safe mapping
             </button>

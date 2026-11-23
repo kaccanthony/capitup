@@ -225,13 +225,31 @@
 - **Decision:** On a paid tier, use Supabase daily automated backups or enable its PITR add-on for finer recovery points; Supabase stops separate daily backups while PITR is enabled. On a free tier, take a manual `pg_dump` at least weekly. Target RPO (maximum acceptable data loss) is 24 hours and RTO (time to restore service from backup plus redeploy) is 4 hours. The Publicity Director (Kent) is primary operator, with one designated backup person. Test a full restore quarterly. Recovery scope includes the database, securely stored `.env` secrets, migration files, and Git-managed code.
 - **Operational gap:** Weekly `pg_dump` alone cannot meet a 24-hour RPO: up to seven days of changes could be lost. A free-tier deployment needs at least daily verified backups or an explicitly relaxed RPO before claiming the target is met. The backup person must be named and a quarterly restore test must be recorded. Store secrets in a protected backup vault, never in Git. Supabase's [backup documentation](https://supabase.com/docs/guides/platform/backups) distinguishes paid daily backups, the optional PITR add-on, and manual free-tier exports.
 
+## Accepted decisions (continued)
+
+### A-035 - CAPTCHA and rate limiting for authentication
+
+- **Status:** Accepted on 2026-11-23; resolves O-025.
+- **Decision:** Cloudflare Turnstile is implemented on the email/password fallback form. Supabase Auth provides IP-based rate limiting for OAuth and password attempts. No manual unblock procedure is needed: rate limits reset automatically per Supabase policy, and Turnstile tokens expire per challenge. A-027 already governs AI quota with automatic 10-minute window reset.
+- **Rationale:** Turnstile is privacy-preserving, requires no user interaction beyond the widget, and integrates with Supabase's existing auth abuse controls. The automatic reset avoids administrative burden and prevents global lockout of other accounts.
+
+### A-036 - Phase 8 controlled pilot charter
+
+- **Status:** Accepted on 2026-11-23; resolves O-027.
+- **Decision:** Pilot participants: PRO Kent (Publicity Director), 2–3 active Junior Officers. Support owner: Kent. Baseline: manual drafting with copy-paste between editor and Notion. Target: 3–5 real captions drafted, approved, and synced end-to-end with zero lost drafts and sub-24h approval latency. Exit criteria: 3 real postings completed end-to-end over 1 week, zero data loss, zero blocking sync errors.
+- **Rationale:** The pilot validates the full workflow (draft → collaborate → submit → approve → sync → publish) with real users before any broader rollout. The metrics are privacy-safe and observable without telemetry.
+
+### A-037 - Permanent phase sequence
+
+- **Status:** Accepted on 2026-11-23; resolves O-028.
+- **Decision:** The phase numbering is finalized as: Phase 0 (repository foundation), Phase 1 (UI foundation), Phase 2 (auth/membership), Phase 3 (projects/content), Phase 4 (approval workflow), Phase 5 (realtime collaboration), Phase 6 (AI assistance), Phase 7 (Notion integration), Phase 8 (hardening/pilot). Earlier `phase-00-repository-foundation.md` and `phase-01-ui-foundation.md` in `harness/build/` are retained as historical references; `PLANS.md` reflects the canonical sequence. No renaming of completed phase files.
+- **Rationale:** The user-directed Phase 01 foundation overlapped the earlier Phase 0 scope. The canonical sequence now matches the actual implementation order and `PLANS.md` is the single source of truth.
+
 ## Open decisions
 
 | ID | Decision needed | Must resolve before | Required outcome/evidence |
 |---|---|---|---|
-| O-025 | CAPTCHA/rate-limit provider, thresholds, and administrative unblock procedure for authentication | Phase 2 | AI limits and automatic reset are set by A-027; authentication still needs an abuse policy that cannot globally lock another person's account |
-| O-027 | Pilot participants, support owner, metrics baseline/targets, and exit criteria | Phase 8 | Approved pilot charter and privacy-safe measurement plan |
-| O-028 | Permanent phase numbering after the user-directed Phase 01 foundation: retire/rename the earlier Phase 0 and UI-foundation files, or re-sequence the remaining roadmap | Before authorizing the next implementation phase | One unambiguous phase sequence reflected consistently in `PLANS.md` and `harness/build/` |
+| — | (none currently open) | — | — |
 
 ## Spec clarification notes
 

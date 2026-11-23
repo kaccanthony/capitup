@@ -3,10 +3,17 @@ import type {
   NotionFieldMappings,
 } from "@/features/notion/contracts";
 
+export type { NotionFieldMappings, NotionFieldMapping };
+
+export type NotionRichText = {
+  plain_text: string;
+  [key: string]: unknown;
+};
+
 type NotionPropertyValue = {
   type?: string;
   title?: unknown;
-  rich_text?: unknown;
+  rich_text?: NotionRichText[];
   date?: unknown;
   select?: unknown;
   status?: unknown;
@@ -31,6 +38,8 @@ export type NotionExportValues = {
   writerSummary?: string | null;
   workflowStatus?: string | null;
   deepLink?: string | null;
+  viewerUrl?: string | null;
+  captionContent?: string | null;
 };
 
 export type NotionPropertyUpdate =
@@ -174,6 +183,27 @@ export function buildNotionExportProperties(input: {
       }
     }
     result[deepLink.propertyId] = { url: value };
+  }
+
+  const viewerUrl = mappingFor(input.mappings, "viewer_url");
+  if (viewerUrl && input.values.viewerUrl !== undefined) {
+    const value = input.values.viewerUrl?.trim() ?? null;
+    if (value) {
+      const url = new URL(value);
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        throw new Error("Viewer URL must use HTTP or HTTPS.");
+      }
+    }
+    result[viewerUrl.propertyId] = { url: value };
+  }
+
+  const captionContent = mappingFor(input.mappings, "caption_content");
+  if (captionContent && input.values.captionContent !== undefined) {
+    const value = input.values.captionContent?.trim() ?? "";
+    if (value.length > 2_000) throw new Error("Caption content exceeds 2000 character limit.");
+    result[captionContent.propertyId] = {
+      rich_text: value ? [{ text: { content: value } }] : [],
+    };
   }
 
   return result;

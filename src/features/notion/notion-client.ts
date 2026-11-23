@@ -12,10 +12,20 @@ export class NotionUnavailableError extends Error {
   }
 }
 
+const notionPropertySchema = z.object({
+  type: z.string().optional(),
+  title: z.unknown().optional(),
+  rich_text: z.array(z.object({ plain_text: z.string() })).optional(),
+  date: z.unknown().optional(),
+  select: z.unknown().optional(),
+  status: z.unknown().optional(),
+  url: z.string().optional(),
+}).passthrough();
+
 const pageSchema = z.object({
   id: z.string().trim().min(1),
   last_edited_time: z.string().datetime({ offset: true }),
-  properties: z.record(z.string(), z.object({}).passthrough()),
+  properties: z.record(z.string(), notionPropertySchema),
 });
 
 export function createNotionClient() {

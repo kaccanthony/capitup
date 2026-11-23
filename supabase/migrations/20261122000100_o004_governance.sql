@@ -1,14 +1,14 @@
 -- O-004: designation and availability changes are server-authorized and append-only audited.
-alter table public.executive_designations add column grant_reason text;
-alter table public.executive_designations add constraint president_grant_reason_required check (nullif(btrim(grant_reason), '') is not null) not valid;
-create unique index one_live_president_designation_per_membership on public.executive_designations (membership_id) where revoked_at is null;
-alter table public.junior_officer_unavailability add column revoked_at timestamptz;
-alter table public.junior_officer_unavailability add column revoked_by_user_id uuid references auth.users(id) on delete restrict;
-alter table public.junior_officer_unavailability add column revocation_reason text;
-alter table public.junior_officer_unavailability add constraint unavailability_end_after_start check (ends_at is null or ends_at > starts_at) not valid;
-alter table public.junior_officer_unavailability add constraint unavailability_revocation_reason check (revoked_at is null or (revoked_by_user_id is not null and nullif(btrim(revocation_reason), '') is not null));
+alter table public.executive_designations add column if not exists grant_reason text;
+do $$ begin alter table public.executive_designations add constraint president_grant_reason_required check (nullif(btrim(grant_reason), '') is not null) not valid; exception when duplicate_object then null; end $$;
+create unique index if not exists one_live_president_designation_per_membership on public.executive_designations (membership_id) where revoked_at is null;
+alter table public.junior_officer_unavailability add column if not exists revoked_at timestamptz;
+alter table public.junior_officer_unavailability add column if not exists revoked_by_user_id uuid references auth.users(id) on delete restrict;
+alter table public.junior_officer_unavailability add column if not exists revocation_reason text;
+do $$ begin alter table public.junior_officer_unavailability add constraint unavailability_end_after_start check (ends_at is null or ends_at > starts_at) not valid; exception when duplicate_object then null; end $$;
+do $$ begin alter table public.junior_officer_unavailability add constraint unavailability_revocation_reason check (revoked_at is null or (revoked_by_user_id is not null and nullif(btrim(revocation_reason), '') is not null)); exception when duplicate_object then null; end $$;
 
-create table public.workflow_governance_events (
+create table if not exists public.workflow_governance_events (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete restrict,
   membership_id uuid not null references public.organization_memberships(id) on delete restrict,
@@ -19,16 +19,16 @@ create table public.workflow_governance_events (
 );
 alter table public.workflow_governance_events enable row level security;
 revoke all on public.workflow_governance_events from public, anon, authenticated;
-create policy workflow_governance_events_read on public.workflow_governance_events for select to authenticated using (
+do $$ begin create policy workflow_governance_events_read on public.workflow_governance_events for select to authenticated using (
   private.has_organization_role(organization_id, 'publicity_director') or private.has_organization_role(organization_id, 'pro')
-);
+); exception when duplicate_object then null; end $$;
 grant select on public.workflow_governance_events to authenticated;
 
 create or replace function private.reject_governance_event_mutation()
 returns trigger language plpgsql set search_path = '' as $$
 begin raise exception 'governance audit events are immutable' using errcode = '42501'; end; $$;
-create trigger governance_events_immutable before update or delete on public.workflow_governance_events
-for each row execute function private.reject_governance_event_mutation();
+do $$ begin create trigger governance_events_immutable before update or delete on public.workflow_governance_events
+for each row execute function private.reject_governance_event_mutation(); exception when duplicate_object then null; end $$;
 
 create or replace function public.change_president_designation(p_membership_id uuid, p_grant boolean, p_reason text)
 returns boolean language plpgsql security definer set search_path = '' as $$
@@ -67,7 +67,7 @@ grant execute on function public.change_president_designation(uuid,boolean,text)
 
 create or replace function public.change_junior_officer_unavailability(p_membership_id uuid, p_unavailable boolean, p_reason text, p_ends_at timestamptz default null)
 returns boolean language plpgsql security definer set search_path = '' as $$
-declare v_member public.organization_memberships%rowtype; v_actor uuid := auth.uid();
+declare v_member public.organization_memberships%rowtype; v_actor uuid := auth.uid(); v_auto_advanced boolean;
 begin
   select * into v_member from public.organization_memberships where id = p_membership_id for update;
   if v_actor is null or v_member.id is null or p_unavailable is null or nullif(btrim(p_reason), '') is null
@@ -86,6 +86,14 @@ begin
     end if;
     insert into public.junior_officer_unavailability (membership_id, reason, marked_by_user_id, ends_at)
     values (v_member.id, btrim(p_reason), v_actor, p_ends_at);
+
+    -- O-004: Auto-reevaluate junior_officer_unanimous steps after marking unavailable
+    select private.auto_advance_junior_officer_unanimous_step(instance.id) into v_auto_advanced
+    from public.workflow_instances instance
+    join public.workflow_instance_steps step on step.instance_id = instance.id
+    where step.kind = 'junior_officer_unanimous'
+      and step.status = 'pending'
+      and instance.status = 'in_review';
   else
     update public.junior_officer_unavailability set revoked_at = now(), revoked_by_user_id = v_actor,
       revocation_reason = btrim(p_reason)

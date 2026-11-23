@@ -23,32 +23,59 @@ function value(formData: FormData, key: string) {
 export async function configureNotionIntegrationAction(formData: FormData) {
   const organizationId = value(formData, "organizationId");
   try {
+    const mappings: Array<{
+      field: string;
+      direction: "import" | "export";
+      propertyId: string;
+      propertyType: string;
+    }> = [
+      {
+        field: "project_title",
+        direction: "import",
+        propertyId: value(formData, "titlePropertyId"),
+        propertyType: "title",
+      },
+      {
+        field: "event_start_at",
+        direction: "import",
+        propertyId: value(formData, "eventStartPropertyId"),
+        propertyType: "date",
+      },
+      {
+        field: "deadline_at",
+        direction: "import",
+        propertyId: value(formData, "deadlinePropertyId"),
+        propertyType: "date",
+      },
+    ];
+
+    const viewerUrlPropertyId = value(formData, "viewerUrlPropertyId");
+    if (viewerUrlPropertyId) {
+      mappings.push({
+        field: "viewer_url",
+        direction: "export",
+        propertyId: viewerUrlPropertyId,
+        propertyType: "url",
+      });
+    }
+
+    const captionContentPropertyId = value(formData, "captionContentPropertyId");
+    if (captionContentPropertyId) {
+      mappings.push({
+        field: "caption_content",
+        direction: "export",
+        propertyId: captionContentPropertyId,
+        propertyType: "rich_text",
+      });
+    }
+
     await configureNotionIntegration({
       organizationId,
       label: value(formData, "label"),
       workspaceId: value(formData, "workspaceId"),
       subscriptionId: value(formData, "subscriptionId"),
       dataSourceId: value(formData, "dataSourceId"),
-      mappings: [
-        {
-          field: "project_title",
-          direction: "import",
-          propertyId: value(formData, "titlePropertyId"),
-          propertyType: "title",
-        },
-        {
-          field: "event_start_at",
-          direction: "import",
-          propertyId: value(formData, "eventStartPropertyId"),
-          propertyType: "date",
-        },
-        {
-          field: "deadline_at",
-          direction: "import",
-          propertyId: value(formData, "deadlinePropertyId"),
-          propertyType: "date",
-        },
-      ],
+      mappings,
     });
   } catch {
     redirect(`${settingsPath}?notice=configuration-invalid`);
