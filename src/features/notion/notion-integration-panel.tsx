@@ -51,7 +51,7 @@ export function NotionIntegrationPanel({
             The token stays in server deployment configuration. Configure only
             the explicitly shared posting data source, its Notion-owned title
             and schedule fields, optional posting status and assignee
-            references, and the Cap-It-Up URL property.
+            references, and the Caption embed in each posting page.
           </p>
 
           <dl className="mt-5 grid gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-4 text-sm sm:grid-cols-2">
@@ -100,7 +100,7 @@ export function NotionIntegrationPanel({
           </h2>
           <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
             Notion remains the source for posting metadata. CapItUp writes only
-            the Cap-It-Up URL; captions and approval history stay in CapItUp.
+            only the Caption embed link; captions and approval history stay in CapItUp.
           </p>
           <form
             action={configureNotionIntegrationAction}
@@ -194,15 +194,6 @@ export function NotionIntegrationPanel({
                 defaultValue={mappingValue(overview, "assignee_refs")}
                 label="Assignee property ID"
                 name="assigneePropertyId"
-              />
-            </label>
-            <label className="text-sm font-medium">
-              Cap-It-Up URL property ID (url)
-              <SensitiveIdInput
-                className={fieldClassName}
-                defaultValue={mappingValue(overview, "deep_link")}
-                label="Cap-It-Up URL property ID"
-                name="capItUpUrlPropertyId"
               />
             </label>
             <button className={primaryButtonClassName} type="submit">

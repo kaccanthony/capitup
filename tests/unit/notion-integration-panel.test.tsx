@@ -55,12 +55,6 @@ describe("Notion integration administration panel", () => {
                 propertyId: "assignee-id",
                 propertyType: "people",
               },
-              {
-                field: "deep_link",
-                direction: "export",
-                propertyId: "capitup-url-id",
-                propertyType: "url",
-              },
             ],
             lastSuccessAt: null,
             lastFailureAt: "2026-11-15T08:00:00.000Z",
@@ -130,7 +124,7 @@ describe("Notion integration administration panel", () => {
       screen.getByRole("button", { name: "Acknowledge resolution" }),
     ).toBeEnabled();
     expect(
-      screen.getByText(/CapItUp writes only the Cap-It-Up URL/i),
+      screen.getByText(/Caption embed link/i),
     ).toBeInTheDocument();
   });
 });

@@ -161,7 +161,7 @@ describe("Notion field mapping", () => {
     ).toBe(false);
   });
 
-  it("ignores legacy Notion caption mappings and treats the old viewer URL as the single CapItUp URL", () => {
+  it("ignores legacy caption, status, and URL-property mappings", () => {
     const parsed = notionFieldMappingsSchema.parse([
       {
         field: "project_title",
@@ -201,12 +201,6 @@ describe("Notion field mapping", () => {
         direction: "import",
         propertyId: "title",
         propertyType: "title",
-      },
-      {
-        field: "deep_link",
-        direction: "export",
-        propertyId: "capitup-url",
-        propertyType: "url",
       },
     ]);
   });

@@ -49,16 +49,6 @@ export async function configureNotionIntegrationAction(formData: FormData) {
       },
     ];
 
-    const capItUpUrlPropertyId = value(formData, "capItUpUrlPropertyId");
-    if (capItUpUrlPropertyId) {
-      mappings.push({
-        field: "deep_link",
-        direction: "export",
-        propertyId: capItUpUrlPropertyId,
-        propertyType: "url",
-      });
-    }
-
     const postStatusPropertyId = value(formData, "postStatusPropertyId");
     if (postStatusPropertyId) {
       mappings.push({

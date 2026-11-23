@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getAccessibleContentItem } from "@/features/projects/data";
-import { notionFieldMappingsSchema } from "@/features/notion/contracts";
+import { syncCaptionEmbed } from "@/features/notion/caption-embed";
 import { createNotionClient } from "@/features/notion/notion-client";
 import { getPublicEnvironment } from "@/lib/env/client";
 import { getAuthorizationForClient } from "@/lib/auth/authorization";
@@ -37,21 +37,13 @@ export async function syncCapItUpLink(input: {
 
   const { data: connection, error: connectionError } = await client
     .from("integration_connections")
-    .select("id,status,field_mappings")
+    .select("id,status")
     .eq("organization_id", item.organizationId)
     .eq("provider", "notion")
     .maybeSingle();
   if (connectionError || !connection || connection.status !== "active") {
     throw new NotionLinkSyncError("unavailable");
   }
-
-  const mappings = notionFieldMappingsSchema.safeParse(
-    connection.field_mappings,
-  );
-  const urlMapping = mappings.success
-    ? mappings.data.find((mapping) => mapping.field === "deep_link")
-    : null;
-  if (!urlMapping) throw new NotionLinkSyncError("mapping");
 
   const { data: claimed, error: claimError } = await client.rpc(
     "claim_notion_content_item_link",
@@ -77,8 +69,22 @@ export async function syncCapItUpLink(input: {
     appUrl,
   ).toString();
 
-  await createNotionClient().pages.update({
-    page_id: link.notion_page_id,
-    properties: { [urlMapping.propertyId]: { url: capItUpUrl } },
-  });
+  const notion = createNotionClient();
+  try {
+    await syncCaptionEmbed({
+      pageId: link.notion_page_id,
+      url: capItUpUrl,
+      listChildren: async (blockId, cursor) => notion.blocks.children.list({
+        block_id: blockId,
+        start_cursor: cursor,
+        page_size: 100,
+      }) as Promise<{ results: import("@/features/notion/caption-embed").NotionBlock[]; has_more: boolean; next_cursor: string | null }>,
+      updateEmbed: (blockId, url) => notion.blocks.update({
+        block_id: blockId,
+        embed: { url },
+      }),
+    });
+  } catch {
+    throw new NotionLinkSyncError("link");
+  }
 }

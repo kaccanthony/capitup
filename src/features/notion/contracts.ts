@@ -8,7 +8,6 @@ export const notionFieldKeySchema = z.enum([
   "deadline_at",
   "post_status",
   "assignee_refs",
-  "deep_link",
 ]);
 
 export const notionPostStatusSchema = z.enum([
@@ -48,13 +47,12 @@ export const notionFieldMappingsSchema = z.preprocess(
           if (
             mapping.field === "caption_content" ||
             mapping.field === "writer_summary" ||
-            mapping.field === "workflow_status"
+            mapping.field === "workflow_status" ||
+            mapping.field === "deep_link"
           ) {
             return [];
           }
-          if (mapping.field === "viewer_url") {
-            return [{ ...mapping, field: "deep_link" }];
-          }
+          if (mapping.field === "viewer_url") return [];
           return [entry];
         })
       : input,
@@ -87,7 +85,6 @@ export const notionFieldMappingsSchema = z.preprocess(
         deadline_at: { direction: "import", types: ["date"] },
         post_status: { direction: "import", types: ["status"] },
         assignee_refs: { direction: "import", types: ["people"] },
-        deep_link: { direction: "export", types: ["url"] },
       };
 
       for (const mapping of mappings) {

@@ -738,7 +738,7 @@ Use this safer design:
 
 ### 12.1 Recommended first release: one internal connection
 
-For one organization workspace, ask a Notion workspace owner to create an internal connection, grant only the necessary capabilities, and share only the calendar database or parent page with it. Store the token as a server secret.
+For one organization workspace, ask a Notion workspace owner to create an internal connection, grant the content-read and content-update capabilities needed to read posting metadata and update the existing Caption embed, and share only the calendar data source and posting pages with it. Store the token as a server secret. No CapItUp URL database property is required.
 
 Advantages:
 
@@ -766,9 +766,9 @@ First determine what “our Notion calendar” means:
 | Platform, assignees, and schedule status | Notion | Notion only; untouched by CapItUp sync |
 | Working caption versions | App only | No sync |
 | Caption text and approvals | CapItUp | No sync to Notion |
-| Cap-It-Up URL | CapItUp | App → Notion, one URL property |
+| CapItUp entry link | CapItUp | App → Notion, update the URL of the existing Caption embed block |
 
-Use Notion webhooks to detect metadata changes and then fetch the authoritative page. Webhooks are near-real-time rather than guaranteed instant UI transport, so Supabase/Liveblocks remain responsible for live caption collaboration. Each Notion posting row is bound to one CapItUp content item before the URL is written.
+Use Notion webhooks to detect metadata changes and then fetch the authoritative page. Webhooks are near-real-time rather than guaranteed instant UI transport, so Supabase/Liveblocks remain responsible for live caption collaboration. Keep the existing bold `Caption` label and its immediately following top-level embed block in each posting page. After a Notion posting row is bound to one CapItUp content item, the explicit Retry Link Sync action locates that unique block and updates its embed URL to `/projects/{projectId}/content/{contentItemId}/open`. The `/open` route sends authorized editors to the editor and viewers to the read-only view with Copy Caption. Never read or write caption text through this link bridge. Missing or ambiguous Caption blocks and Notion API errors are retryable and must not block local editing or approvals.
 
 ### 12.5 Conflict policy
 
