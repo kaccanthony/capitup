@@ -59,6 +59,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid webhook." }, { status: 401 });
   }
 
+  console.info("[NOTION] verified subscription identifiers", {
+    workspace_id: verified.event.workspace_id,
+    subscription_id: verified.event.subscription_id,
+  });
+
+
+
   try {
     const accepted = await acceptVerifiedNotionWebhook({
       event: verified.event,
