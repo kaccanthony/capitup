@@ -85,17 +85,34 @@ export type NotionIntegrationOverview = {
 
 export async function getNotionIntegrationOverview(): Promise<NotionIntegrationOverview> {
   const context = await getAdminContext();
-  const { data: connection, error } = await context.client
-    .from("integration_connections")
-    .select(
-      "id,label,status,notion_data_source_id,last_success_at,last_failure_at,last_error_code",
-    )
-    .eq("organization_id", context.organizationId)
-    .eq("provider", "notion")
-    .maybeSingle();
 
-  if (error) throw new NotionIntegrationAccessError();
+  // TEMP DEBUG: Log each query with error details
+  let connection: Awaited<typeof context.client.from("integration_connections").select("*").maybeSingle()>.data | null = null;
+  let connectionError: Awaited<typeof context.client.from("integration_connections").select("*").maybeSingle()>.error | null = null;
+
+  try {
+    const result = await context.client
+      .from("integration_connections")
+      .select(
+        "id,label,status,notion_data_source_id,last_success_at,last_failure_at,last_error_code",
+      )
+      .eq("organization_id", context.organizationId)
+      .eq("provider", "notion")
+      .maybeSingle();
+    connection = result.data;
+    connectionError = result.error;
+    console.log("[NOTION] integration_connections query:", { data: connection ? "found" : "null", error: connectionError });
+  } catch (e) {
+    console.error("[NOTION] integration_connections query threw:", e);
+    throw new NotionIntegrationAccessError();
+  }
+
+  if (connectionError) {
+    console.error("[NOTION] integration_connections error:", connectionError);
+    throw new NotionIntegrationAccessError();
+  }
   if (!connection) {
+    console.log("[NOTION] No connection found, returning empty overview");
     return {
       connection: null,
       recentRuns: [],
@@ -104,30 +121,64 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
     };
   }
 
-  const [runs, conflicts, deadLetters] = await Promise.all([
-    context.client
+  // Query sync_runs
+  let runsData: Awaited<typeof context.client.from("sync_runs").select("*")>.data | null = null;
+  let runsError: Awaited<typeof context.client.from("sync_runs").select("*")>.error | null = null;
+  try {
+    const result = await context.client
       .from("sync_runs")
       .select("id,direction,state,error_code,created_at")
       .eq("integration_connection_id", connection.id)
       .order("created_at", { ascending: false })
-      .limit(8),
-    context.client
+      .limit(8);
+    runsData = result.data;
+    runsError = result.error;
+    console.log("[NOTION] sync_runs query:", { count: runsData?.length ?? 0, error: runsError });
+  } catch (e) {
+    console.error("[NOTION] sync_runs query threw:", e);
+    throw new NotionIntegrationAccessError();
+  }
+
+  // Query sync_conflicts
+  let conflictsData: Awaited<typeof context.client.from("sync_conflicts").select("*")>.data | null = null;
+  let conflictsError: Awaited<typeof context.client.from("sync_conflicts").select("*")>.error | null = null;
+  try {
+    const result = await context.client
       .from("sync_conflicts")
       .select("id,kind,detail_code,created_at")
       .eq("integration_connection_id", connection.id)
       .eq("state", "open")
       .order("created_at", { ascending: false })
-      .limit(8),
-    context.client
+      .limit(8);
+    conflictsData = result.data;
+    conflictsError = result.error;
+    console.log("[NOTION] sync_conflicts query:", { count: conflictsData?.length ?? 0, error: conflictsError });
+  } catch (e) {
+    console.error("[NOTION] sync_conflicts query threw:", e);
+    throw new NotionIntegrationAccessError();
+  }
+
+  // Query dead_letter_events
+  let deadLettersData: Awaited<typeof context.client.from("dead_letter_events").select("*")>.data | null = null;
+  let deadLettersError: Awaited<typeof context.client.from("dead_letter_events").select("*")>.error | null = null;
+  try {
+    const result = await context.client
       .from("dead_letter_events")
       .select("id,reason_code,replay_count")
       .eq("integration_connection_id", connection.id)
       .is("resolved_at", null)
       .order("created_at", { ascending: false })
-      .limit(8),
-  ]);
+      .limit(8);
+    deadLettersData = result.data;
+    deadLettersError = result.error;
+    console.log("[NOTION] dead_letter_events query:", { count: deadLettersData?.length ?? 0, error: deadLettersError });
+  } catch (e) {
+    console.error("[NOTION] dead_letter_events query threw:", e);
+    throw new NotionIntegrationAccessError();
+  }
 
-  if (runs.error || conflicts.error || deadLetters.error) {
+  if (runsError || conflictsError || deadLettersError) {
+    console.error("[NOTION] One or more queries returned error:", { runsError, conflictsError, deadLettersError });
     throw new NotionIntegrationAccessError();
   }
 
@@ -141,20 +192,20 @@ export async function getNotionIntegrationOverview(): Promise<NotionIntegrationO
       lastFailureAt: connection.last_failure_at,
       lastErrorCode: connection.last_error_code,
     },
-    recentRuns: (runs.data ?? []).map((run) => ({
+    recentRuns: (runsData ?? []).map((run) => ({
       id: run.id,
       direction: run.direction,
       state: run.state,
       errorCode: run.error_code,
       createdAt: run.created_at,
     })),
-    openConflicts: (conflicts.data ?? []).map((conflict) => ({
+    openConflicts: (conflictsData ?? []).map((conflict) => ({
       id: conflict.id,
       kind: conflict.kind,
       detailCode: conflict.detail_code,
       createdAt: conflict.created_at,
     })),
-    deadLetters: (deadLetters.data ?? []).map((event) => ({
+    deadLetters: (deadLettersData ?? []).map((event) => ({
       id: event.id,
       reasonCode: event.reason_code,
       replayCount: event.replay_count,
@@ -373,5 +424,8 @@ export async function recordNotionSyncFailure(input: {
     p_error_code: input.errorCode,
     p_next_attempt_at: input.nextAttemptAt ?? null,
   });
-  if (error) throw new NotionIntegrationAccessError();
+  if (error) {
+    console.error("[NOTION] integration_connections query error:", error);
+    throw new NotionIntegrationAccessError();
+  }
 }
