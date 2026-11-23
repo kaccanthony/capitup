@@ -12,6 +12,7 @@ export type NotionRichText = {
 };
 
 type NotionPropertyValue = {
+  id?: string;
   type?: string;
   title?: unknown;
   rich_text?: NotionRichText[];
@@ -108,7 +109,13 @@ function propertyFor(
   mapping: NotionFieldMapping | null,
 ) {
   if (!mapping) return null;
-  return page.properties[mapping.propertyId] ?? null;
+  const direct = page.properties[mapping.propertyId];
+  if (direct && (!direct.id || direct.id === mapping.propertyId)) return direct;
+
+  const matches = Object.values(page.properties).filter(
+    (property) => property.id === mapping.propertyId,
+  );
+  return matches.length === 1 ? matches[0] : null;
 }
 
 /**

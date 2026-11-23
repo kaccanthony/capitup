@@ -39,6 +39,29 @@ const mappings = notionFieldMappingsSchema.parse([
 ]);
 
 describe("Notion field mapping", () => {
+  it("resolves Notion property IDs when page properties are keyed by name", () => {
+    const idMappings = notionFieldMappingsSchema.parse([
+      { field: "project_title", direction: "import", propertyId: "title", propertyType: "title" },
+      { field: "event_start_at", direction: "import", propertyId: "date-id", propertyType: "date" },
+      { field: "deadline_at", direction: "import", propertyId: "deadline-id", propertyType: "date" },
+    ]);
+
+    expect(
+      mapNotionPageToProject({
+        mappings: idMappings,
+        page: {
+          id: "page-id",
+          lastEditedAt: "2026-11-23T04:00:00.000Z",
+          properties: {
+            "Post ID": { id: "title", type: "title", title: [{ plain_text: "Open Day" }] },
+            "Posting Date & Time": { id: "date-id", type: "date", date: { start: "2026-12-01" } },
+            "Deliverable Deadline": { id: "deadline-id", type: "date", date: null },
+          },
+        },
+      }),
+    ).toMatchObject({ title: "Open Day", eventStartsAt: "2026-12-01", deadlineAt: null });
+  });
+
   it("imports only Notion-owned project metadata", () => {
     expect(
       mapNotionPageToProject({
