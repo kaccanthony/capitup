@@ -38,7 +38,16 @@ export async function synchronizeNotionWebhookImport(
   webhookEventId: string,
   gateway: NotionImportGateway = defaultGateway,
 ) {
-  const context = await gateway.getContext(webhookEventId);
+  let context: Awaited<ReturnType<NotionImportGateway["getContext"]>>;
+  try {
+    context = await gateway.getContext(webhookEventId);
+  } catch (error) {
+    console.error("[NOTION] webhook import context lookup failed", {
+      webhookEventId,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw error;
+  }
 
   try {
     const page = await gateway.fetchPage(context.externalObjectId);

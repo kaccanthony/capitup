@@ -342,14 +342,22 @@ export async function getNotionWebhookProcessingContext(
   webhookEventId: string,
 ): Promise<NotionWebhookProcessingContext> {
   const client = createServiceRoleSupabaseClient();
-  if (!client) throw new NotionIntegrationAccessError();
+  if (!client) {
+    console.error("[NOTION] import context unavailable", { reason: "service_role_client_missing" });
+    throw new NotionIntegrationAccessError();
+  }
 
   const { data: event, error: eventError } = await client
     .from("webhook_events")
     .select("id,integration_connection_id,external_object_id")
     .eq("id", webhookEventId)
     .maybeSingle();
-  if (eventError || !event) throw new NotionIntegrationAccessError();
+  if (eventError || !event) {
+    console.error("[NOTION] import context unavailable", {
+      reason: eventError ? "webhook_event_query_failed" : "webhook_event_missing",
+    });
+    throw new NotionIntegrationAccessError();
+  }
 
   const [
     { data: connection, error: connectionError },
@@ -374,6 +382,17 @@ export async function getNotionWebhookProcessingContext(
     connection?.field_mappings,
   );
   if (connectionError || runError || !run || !mappings.success) {
+    console.error("[NOTION] import context unavailable", {
+      reason: connectionError
+        ? "connection_query_failed"
+        : runError
+          ? "sync_run_query_failed"
+          : !connection
+            ? "connection_missing"
+            : !run
+              ? "queued_or_running_sync_run_missing"
+              : "field_mappings_invalid",
+    });
     throw new NotionIntegrationAccessError();
   }
 
