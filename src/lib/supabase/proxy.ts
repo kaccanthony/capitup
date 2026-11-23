@@ -7,8 +7,9 @@ const publicApplicationPaths = new Set([
   "/login",
   "/access-denied",
   "/auth/callback",
-  "/api/notion/webhook",
 ]);
+
+const inertNotionWebhookPath = "/api/notion/webhook";
 
 export function isProtectedApplicationPath(pathname: string) {
   return !publicApplicationPaths.has(pathname);
@@ -37,8 +38,12 @@ function redirectWithCookies(sourceResponse: NextResponse, destination: URL) {
 }
 
 export async function updateSupabaseSession(request: NextRequest) {
-  // Notion cannot present an app session; the webhook route validates its token/signature.
-  if (request.nextUrl.pathname === "/api/notion/webhook") {
+  // Notion cannot present an app session. Acknowledge deliveries without
+  // entering the authenticated application or invoking Supabase.
+  if (
+    request.method === "POST" &&
+    request.nextUrl.pathname === inertNotionWebhookPath
+  ) {
     return NextResponse.next({ request });
   }
 

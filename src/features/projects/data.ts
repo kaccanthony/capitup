@@ -253,7 +253,7 @@ export type ContentDetailDto = {
     responsibility: ContentResponsibility;
   }[];
   canEdit: boolean;
-  canSyncNotionLink: boolean;
+  canManageDeliverables: boolean;
 };
 
 export async function getAccessibleContentItem(
@@ -391,7 +391,7 @@ export async function getAccessibleContentItem(
     canEdit:
       (item.status === "draft" || item.status === "changes_requested") &&
       canEditByAssignment,
-    canSyncNotionLink:
+    canManageDeliverables:
       context.roles.includes("org_admin") || canEditByAssignment,
   };
 }

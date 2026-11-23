@@ -41,19 +41,17 @@ describe("environment validation", () => {
 
     expect(() =>
       parseServerEnvironment({
-        GEMINI_API_KEY: secretValue,
-        NOTION_API_TOKEN: "",
+        GEMINI_API_KEY: "",
       }),
     ).toThrow(EnvironmentValidationError);
 
     try {
       parseServerEnvironment({
-        GEMINI_API_KEY: secretValue,
-        NOTION_API_TOKEN: "",
+        GEMINI_API_KEY: "",
       });
     } catch (error) {
       expect(error).toBeInstanceOf(EnvironmentValidationError);
-      expect(error).toMatchObject({ keys: ["NOTION_API_TOKEN"] });
+      expect(error).toMatchObject({ keys: ["GEMINI_API_KEY"] });
       expect(String(error)).not.toContain(secretValue);
     }
   });

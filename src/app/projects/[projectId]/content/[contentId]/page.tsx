@@ -23,19 +23,15 @@ import {
   ProjectWorkspace,
   secondaryButtonClassName,
 } from "@/features/projects/project-workspace";
-import { syncCapItUpLinkAction } from "@/features/notion/link-sync-actions";
 
 export const metadata: Metadata = { title: "Content record" };
 
 export default async function ContentRecordPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ projectId: string; contentId: string }>;
-  searchParams: Promise<{ notice?: string }>;
 }) {
   const { projectId, contentId } = await params;
-  const { notice } = await searchParams;
   let item: Awaited<ReturnType<typeof getAccessibleContentItem>>;
   let project: Awaited<ReturnType<typeof getAccessibleProject>>;
   let taxonomy: Awaited<ReturnType<typeof getControlledTaxonomy>>;
@@ -82,22 +78,6 @@ export default async function ContentRecordPage({
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)]">
         <div className="space-y-5">
-          {notice === "notion-link-sync-failed" && (
-            <p role="status" className="surface-panel text-sm text-amber-100">
-              Notion link sync failed. Your CapItUp edits and approvals are
-              unchanged. Retry when Notion is available.
-            </p>
-          )}
-          {notice === "notion-link-synced" && (
-            <p role="status" className="surface-panel text-sm text-emerald-100">
-              Cap-It-Up link synced to Notion.
-            </p>
-          )}
-          {notice === "notion-link-forbidden" && (
-            <p role="status" className="surface-panel text-sm text-amber-100">
-              You need editing access to sync this link.
-            </p>
-          )}
           <section
             className="surface-panel"
             aria-labelledby="content-metadata-title"
@@ -233,7 +213,7 @@ export default async function ContentRecordPage({
               </ul>
             )}
 
-            {item.canSyncNotionLink && (
+            {item.canManageDeliverables && (
               <form
                 action={addDeliverableAction}
                 className="mt-6 space-y-3 border-t border-white/8 pt-5"
@@ -360,30 +340,6 @@ export default async function ContentRecordPage({
               destination-policy catalog. This record cannot invent an arbitrary
               destination.
             </p>
-          </section>
-
-          <section
-            className="surface-panel"
-            aria-labelledby="notion-link-title"
-          >
-            <p className="eyebrow">Notion metadata record</p>
-            <h2 id="notion-link-title" className="mt-2 text-lg font-semibold">
-              Cap-It-Up link
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              Notion retains posting metadata. Caption text and approvals stay
-              in CapItUp. Syncing the link never sends caption content to
-              Notion.
-            </p>
-            {item.canEdit && (
-              <form action={syncCapItUpLinkAction} className="mt-4">
-                <input type="hidden" name="projectId" value={project.id} />
-                <input type="hidden" name="contentItemId" value={item.id} />
-                <button className={secondaryButtonClassName} type="submit">
-                  Retry Link Sync
-                </button>
-              </form>
-            )}
           </section>
         </div>
       </div>

@@ -22,20 +22,6 @@ test("protects every Phase 01 workspace route", async ({ page }) => {
   }
 });
 
-test("protects the Notion integration administration route", async ({
-  page,
-}) => {
-  const route = "/settings/integrations/notion";
-  await page.goto(route);
-
-  await expect(page).toHaveURL(
-    new RegExp(`/login\\?next=${encodeURIComponent(route)}$`),
-  );
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Welcome back." }),
-  ).toBeVisible();
-});
-
 test("renders the sign-in form without revealing membership", async ({
   page,
 }) => {

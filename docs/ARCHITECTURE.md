@@ -6,7 +6,9 @@ This document describes the planned system boundaries and data flow derived from
 
 ## System context
 
-CapItUp is a private, organization-only Next.js App Router application deployed on Vercel. It uses Supabase for identity and durable application data, Liveblocks with TipTap and Yjs for managed realtime editing, OpenAI Responses API for server-authorized drafting assistance, and one organization-managed Notion internal integration for calendar and project metadata.
+**Notion sync is paused on `master` as of 2026-11-23.** Its implementation remains on `feature/notion-sync-paused`. Applied Supabase migration history and data are retained; this branch ships no active Notion route, settings UI, or runtime client.
+
+CapItUp is a private, organization-only Next.js App Router application deployed on Vercel. It uses Supabase for identity and durable application data, Liveblocks with TipTap and Yjs for managed realtime editing, and OpenAI Responses API for server-authorized drafting assistance.
 
 ```mermaid
 flowchart LR
