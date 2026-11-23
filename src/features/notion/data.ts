@@ -5,6 +5,7 @@ import { getAuthorizationForClient } from "@/lib/auth/authorization";
 import { canAdministerOrganization } from "@/lib/auth/policy";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { OrganizationRole } from "@/types/database";
 import {
   notionConnectionInputSchema,
   notionFieldMappingsSchema,
@@ -29,6 +30,23 @@ async function getAdminContext(): Promise<AdminContext> {
   if (!client) throw new NotionIntegrationAccessError();
 
   const decision = await getAuthorizationForClient(client);
+
+  // TEMP DEBUG: Log admin context check
+  let canAdminister = false;
+  let roles: readonly OrganizationRole[] | undefined;
+  let organizationId: string | undefined;
+  if (decision.kind === "active") {
+    organizationId = decision.organizationId;
+    roles = decision.roles;
+    canAdminister = canAdministerOrganization(decision, decision.organizationId);
+  }
+  console.log("[NOTION] getAdminContext decision:", JSON.stringify({
+    kind: decision.kind,
+    organizationId,
+    roles,
+    canAdminister,
+  }, null, 2));
+
   if (
     decision.kind !== "active" ||
     !canAdministerOrganization(decision, decision.organizationId)

@@ -30,14 +30,32 @@ export async function getAuthorizationForClient(
   );
 
   if (membershipError) {
+    console.error("[AUTH] RPC error:", membershipError);
     return { kind: "unauthorized", userId: user.id };
   }
 
-  return classifyMembershipAccess({
+  // TEMP DEBUG: Log raw RPC response
+  console.log("[AUTH] get_current_membership_access raw:", JSON.stringify(memberships, null, 2));
+
+  const decision = classifyMembershipAccess({
     configured: true,
     userId: user.id,
     memberships: memberships ?? [],
   });
+
+  // TEMP DEBUG: Log classified decision
+  let loggableDecision: Record<string, unknown> = { kind: decision.kind };
+  if (decision.kind === "unauthorized" || decision.kind === "disabled" || decision.kind === "active") {
+    loggableDecision.userId = decision.userId;
+  }
+  if (decision.kind === "active") {
+    loggableDecision.organizationId = decision.organizationId;
+    loggableDecision.roles = decision.roles;
+    loggableDecision.membershipId = decision.membershipId;
+  }
+  console.log("[AUTH] Classified decision:", JSON.stringify(loggableDecision, null, 2));
+
+  return decision;
 }
 
 export async function getCurrentAuthorization(): Promise<AuthorizationDecision> {
